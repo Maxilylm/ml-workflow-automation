@@ -1,0 +1,1576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Claude Code CLI: Agents & Skills</title>
+    <style>
+        /* ==================== CSS Variables ==================== */
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-code: #1a1f26;
+
+            --text-primary: #e6edf3;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+
+            --accent-blue: #58a6ff;
+            --accent-green: #7ee787;
+            --accent-yellow: #d29922;
+            --accent-purple: #a371f7;
+            --accent-red: #f85149;
+            --accent-orange: #f0883e;
+
+            --border-color: #30363d;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+
+            --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+            --font-mono: 'SF Mono', 'Fira Code', 'JetBrains Mono', Consolas, monospace;
+
+            --transition-fast: 150ms ease;
+            --transition-normal: 300ms ease;
+            --transition-slow: 500ms ease;
+        }
+
+        /* ==================== Reset & Base ==================== */
+        *, *::before, *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        /* ==================== Progress Bar ==================== */
+        .progress-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--bg-tertiary);
+            z-index: 1000;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            width: 0%;
+            transition: width var(--transition-normal);
+        }
+
+        .progress-text {
+            position: fixed;
+            top: 12px;
+            right: 20px;
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            font-family: var(--font-mono);
+            z-index: 1000;
+        }
+
+        /* ==================== Navigation Hints ==================== */
+        .nav-hints {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 24px;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            z-index: 1000;
+            opacity: 0.6;
+            transition: opacity var(--transition-fast);
+        }
+
+        .nav-hints:hover {
+            opacity: 1;
+        }
+
+        .nav-hints kbd {
+            display: inline-block;
+            padding: 2px 6px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 0.75rem;
+        }
+
+        /* ==================== Navigation Buttons ==================== */
+        .nav-btn {
+            position: fixed;
+            top: 50%;
+            transform: translateY(-50%);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            font-size: 1.25rem;
+            cursor: pointer;
+            z-index: 1000;
+            transition: all var(--transition-fast);
+            opacity: 0.5;
+        }
+
+        .nav-btn:hover {
+            opacity: 1;
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-btn:disabled {
+            opacity: 0.2;
+            cursor: not-allowed;
+        }
+
+        .nav-prev { left: 20px; }
+        .nav-next { right: 20px; }
+
+        /* ==================== Slides Container ==================== */
+        .slides-container {
+            width: 100%;
+            height: 100vh;
+            position: relative;
+        }
+
+        /* ==================== Individual Slides ==================== */
+        .slide {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 80px;
+            opacity: 0;
+            transform: translateX(60px);
+            transition: opacity var(--transition-normal), transform var(--transition-normal);
+            pointer-events: none;
+        }
+
+        .slide.active {
+            opacity: 1;
+            transform: translateX(0);
+            pointer-events: auto;
+        }
+
+        .slide.prev {
+            transform: translateX(-60px);
+        }
+
+        .slide-content {
+            max-width: 1200px;
+            width: 100%;
+        }
+
+        /* ==================== Typography ==================== */
+        .slide-title {
+            font-size: 2.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text-primary);
+            line-height: 1.2;
+        }
+
+        .slide-title .highlight {
+            background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .slide-subtitle {
+            font-size: 1.25rem;
+            color: var(--text-secondary);
+            margin-bottom: 2rem;
+        }
+
+        h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            color: var(--accent-blue);
+        }
+
+        h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+        }
+
+        p {
+            margin-bottom: 1rem;
+            color: var(--text-secondary);
+        }
+
+        /* ==================== Lists ==================== */
+        ul, ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        li {
+            margin-bottom: 0.5rem;
+            color: var(--text-secondary);
+        }
+
+        li strong {
+            color: var(--text-primary);
+        }
+
+        /* ==================== Code Blocks ==================== */
+        .code-block {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 1.25rem;
+            overflow-x: auto;
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            line-height: 1.7;
+            margin: 1rem 0;
+            position: relative;
+        }
+
+        .code-block::before {
+            content: attr(data-lang);
+            position: absolute;
+            top: 0;
+            right: 0;
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 0 8px 0 8px;
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        code {
+            font-family: var(--font-mono);
+        }
+
+        .inline-code {
+            background: var(--bg-tertiary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 0.9em;
+            color: var(--accent-orange);
+        }
+
+        /* Syntax Highlighting */
+        .hl-keyword { color: var(--accent-purple); }
+        .hl-string { color: var(--accent-green); }
+        .hl-comment { color: var(--text-muted); font-style: italic; }
+        .hl-key { color: var(--accent-blue); }
+        .hl-value { color: var(--accent-orange); }
+        .hl-delimiter { color: var(--accent-yellow); }
+        .hl-command { color: var(--accent-green); }
+
+        /* ==================== Cards Grid ==================== */
+        .cards-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 1.25rem;
+            margin-top: 1.5rem;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.25rem;
+            transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+        }
+
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow-color);
+        }
+
+        .card-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .card-icon.blue { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+        .card-icon.green { background: rgba(126, 231, 135, 0.15); color: var(--accent-green); }
+        .card-icon.purple { background: rgba(163, 113, 247, 0.15); color: var(--accent-purple); }
+        .card-icon.orange { background: rgba(240, 136, 62, 0.15); color: var(--accent-orange); }
+
+        .card h3 {
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+
+        .card .tag {
+            display: inline-block;
+            padding: 2px 8px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.75rem;
+            font-family: var(--font-mono);
+        }
+
+        /* ==================== Tables ==================== */
+        .table-wrapper {
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9rem;
+        }
+
+        th, td {
+            padding: 0.75rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
+        td {
+            color: var(--text-secondary);
+        }
+
+        td code {
+            color: var(--accent-orange);
+            font-size: 0.85em;
+        }
+
+        tr:hover td {
+            background: var(--bg-secondary);
+        }
+
+        /* ==================== Two Column Layout ==================== */
+        .two-col {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            align-items: start;
+        }
+
+        /* ==================== Diagram / ASCII Art ==================== */
+        .diagram {
+            background: var(--bg-code);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            font-family: var(--font-mono);
+            font-size: 0.8rem;
+            line-height: 1.4;
+            white-space: pre;
+            overflow-x: auto;
+            color: var(--text-secondary);
+        }
+
+        .diagram .highlight-box {
+            color: var(--accent-blue);
+        }
+
+        /* ==================== Title Slide Specific ==================== */
+        .title-slide {
+            text-align: center;
+        }
+
+        .title-slide .slide-title {
+            font-size: 3.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .title-slide .slide-subtitle {
+            font-size: 1.5rem;
+            margin-bottom: 3rem;
+        }
+
+        .logo-container {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .logo-icon {
+            width: 80px;
+            height: 80px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: white;
+            box-shadow: 0 8px 32px rgba(88, 166, 255, 0.3);
+        }
+
+        .meta-info {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        /* ==================== Callout Boxes ==================== */
+        .callout {
+            background: var(--bg-secondary);
+            border-left: 4px solid var(--accent-blue);
+            border-radius: 0 8px 8px 0;
+            padding: 1rem 1.25rem;
+            margin: 1rem 0;
+        }
+
+        .callout.tip { border-left-color: var(--accent-green); }
+        .callout.warning { border-left-color: var(--accent-yellow); }
+        .callout.important { border-left-color: var(--accent-purple); }
+
+        .callout-title {
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* ==================== Badge/Pills ==================== */
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .badge.blue { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+        .badge.green { background: rgba(126, 231, 135, 0.15); color: var(--accent-green); }
+        .badge.purple { background: rgba(163, 113, 247, 0.15); color: var(--accent-purple); }
+        .badge.orange { background: rgba(240, 136, 62, 0.15); color: var(--accent-orange); }
+
+        /* ==================== Directory Tree ==================== */
+        .dir-tree {
+            font-family: var(--font-mono);
+            font-size: 0.9rem;
+            line-height: 1.8;
+            color: var(--text-secondary);
+        }
+
+        .dir-tree .folder { color: var(--accent-blue); }
+        .dir-tree .file { color: var(--accent-green); }
+        .dir-tree .comment { color: var(--text-muted); font-style: italic; }
+
+        /* ==================== Links ==================== */
+        a {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+
+        .link-list {
+            list-style: none;
+            margin-left: 0;
+        }
+
+        .link-list li {
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .link-list li:last-child {
+            border-bottom: none;
+        }
+
+        /* ==================== Responsive ==================== */
+        @media (max-width: 900px) {
+            .slide {
+                padding: 40px 30px;
+            }
+
+            .slide-title {
+                font-size: 2rem;
+            }
+
+            .title-slide .slide-title {
+                font-size: 2.5rem;
+            }
+
+            .two-col {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-btn {
+                width: 40px;
+                height: 40px;
+                font-size: 1rem;
+            }
+
+            .nav-prev { left: 10px; }
+            .nav-next { right: 10px; }
+
+            .cards-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-hints {
+                display: none;
+            }
+        }
+
+        @media (max-width: 600px) {
+            .slide {
+                padding: 30px 20px;
+            }
+
+            .slide-title {
+                font-size: 1.5rem;
+            }
+
+            .code-block {
+                font-size: 0.8rem;
+                padding: 0.75rem;
+            }
+
+            table {
+                font-size: 0.8rem;
+            }
+
+            th, td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Progress Bar -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+    <span class="progress-text" id="progressText">1 / 16</span>
+
+    <!-- Navigation Hints -->
+    <div class="nav-hints">
+        <span><kbd>&#8592;</kbd> <kbd>&#8594;</kbd> Navigate</span>
+        <span><kbd>F</kbd> Fullscreen</span>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <button class="nav-btn nav-prev" id="prevBtn">&#8592;</button>
+    <button class="nav-btn nav-next" id="nextBtn">&#8594;</button>
+
+    <!-- Slides Container -->
+    <div class="slides-container" id="slidesContainer">
+
+        <!-- ==================== SLIDE 1: Title ==================== -->
+        <section class="slide title-slide" data-slide="1">
+            <div class="slide-content">
+                <div class="logo-container">
+                    <div class="logo-icon">&#9672;</div>
+                </div>
+                <h1 class="slide-title">Claude Code CLI:<br><span class="highlight">Agents & Skills</span></h1>
+                <p class="slide-subtitle">Building Intelligent Automation with Specialized AI Assistants</p>
+                <p class="meta-info">Best Practices Guide</p>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 2: What is Claude Code CLI ==================== -->
+        <section class="slide" data-slide="2">
+            <div class="slide-content">
+                <h1 class="slide-title">What is <span class="highlight">Claude Code CLI</span>?</h1>
+                <p class="slide-subtitle">An agentic coding assistant that lives in your terminal</p>
+
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-icon blue">&#128187;</div>
+                        <h3>Terminal-Native</h3>
+                        <p>Runs directly in your terminal with full access to your development environment</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon green">&#128640;</div>
+                        <h3>Agentic Capabilities</h3>
+                        <p>Can read, write, and execute code autonomously to complete complex tasks</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon purple">&#9881;</div>
+                        <h3>Extensible</h3>
+                        <p>Extend with custom <strong>Agents</strong> and <strong>Skills</strong> for specialized workflows</p>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon orange">&#128279;</div>
+                        <h3>Integrations</h3>
+                        <p>Connect to external tools via MCP servers, hooks, and plugins</p>
+                    </div>
+                </div>
+
+                <div class="callout tip" style="margin-top: 2rem;">
+                    <div class="callout-title">&#128161; Key Concept</div>
+                    <p style="margin-bottom: 0;"><strong>Agents</strong> handle task delegation with isolated contexts. <strong>Skills</strong> provide reusable prompts and workflows.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 3: Introduction to Agents ==================== -->
+        <section class="slide" data-slide="3">
+            <div class="slide-content">
+                <h1 class="slide-title">Introduction to <span class="highlight">Agents</span></h1>
+                <p class="slide-subtitle">Specialized AI assistants with isolated contexts and custom capabilities</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>What Are Agents?</h2>
+                        <p>Agents (or subagents) are specialized AI assistants that run in their own isolated context window with:</p>
+                        <ul>
+                            <li><strong>Custom system prompts</strong> - Focused instructions</li>
+                            <li><strong>Independent permissions</strong> - Controlled tool access</li>
+                            <li><strong>Separate context</strong> - Won't clutter main conversation</li>
+                            <li><strong>Configurable models</strong> - Use Haiku for speed, Opus for quality</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2>Key Benefits</h2>
+                        <ul>
+                            <li><strong>Context Preservation</strong> - Keep exploration separate from implementation</li>
+                            <li><strong>Tool Restrictions</strong> - Enforce read-only for research agents</li>
+                            <li><strong>Cost Control</strong> - Route to cheaper/faster models</li>
+                            <li><strong>Parallelization</strong> - Run multiple agents simultaneously</li>
+                            <li><strong>Reusability</strong> - Share agents across projects</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout important" style="margin-top: 1.5rem;">
+                    <div class="callout-title">&#9888; Important Limitation</div>
+                    <p style="margin-bottom: 0;">Agents cannot spawn other agents (no nesting). For multi-level delegation, chain agents from the main conversation.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 4: Built-in Agents Overview ==================== -->
+        <section class="slide" data-slide="4">
+            <div class="slide-content">
+                <h1 class="slide-title">Built-in <span class="highlight">Agents</span></h1>
+                <p class="slide-subtitle">Ready-to-use agents for common workflows</p>
+
+                <div class="cards-grid">
+                    <div class="card">
+                        <div class="card-icon blue">&#128269;</div>
+                        <h3>Explore</h3>
+                        <p>Fast codebase exploration with read-only access. Uses Haiku for speed.</p>
+                        <span class="tag">Read-only | Haiku</span>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon purple">&#128203;</div>
+                        <h3>Plan</h3>
+                        <p>Research agent for gathering context before implementation planning.</p>
+                        <span class="tag">Read-only | Inherits Model</span>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon green">&#9881;</div>
+                        <h3>General-Purpose</h3>
+                        <p>Full capabilities for complex multi-step tasks requiring exploration and action.</p>
+                        <span class="tag">All Tools | Inherits Model</span>
+                    </div>
+                    <div class="card">
+                        <div class="card-icon orange">&#128424;</div>
+                        <h3>Bash</h3>
+                        <p>Terminal command execution in a separate context to keep output isolated.</p>
+                        <span class="tag">Bash Only | Inherits Model</span>
+                    </div>
+                </div>
+
+                <div class="callout" style="margin-top: 1.5rem;">
+                    <div class="callout-title">&#128161; Pro Tip</div>
+                    <p style="margin-bottom: 0;">Use <code class="inline-code">Explore</code> with thoroughness levels: <code class="inline-code">quick</code>, <code class="inline-code">medium</code>, or <code class="inline-code">very thorough</code> for different search depths.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 5: Explore Agent Deep Dive ==================== -->
+        <section class="slide" data-slide="5">
+            <div class="slide-content">
+                <h1 class="slide-title">The <span class="highlight">Explore</span> Agent</h1>
+                <p class="slide-subtitle">Your go-to for fast, safe codebase research</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>When to Use</h2>
+                        <ul>
+                            <li>Finding files by patterns or content</li>
+                            <li>Understanding code structure</li>
+                            <li>Searching for implementations</li>
+                            <li>Gathering context before changes</li>
+                            <li>Answering questions about the codebase</li>
+                        </ul>
+
+                        <h2 style="margin-top: 1.5rem;">Thoroughness Levels</h2>
+                        <ul>
+                            <li><strong>quick</strong> - Basic searches, known locations</li>
+                            <li><strong>medium</strong> - Moderate exploration</li>
+                            <li><strong>very thorough</strong> - Comprehensive analysis</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2>Example Prompt</h2>
+                        <div class="code-block" data-lang="prompt">
+<span class="hl-comment"># Ask Claude to use the Explore agent:</span>
+
+"Find all files that handle user
+authentication. Be very thorough."
+
+<span class="hl-comment"># Claude will spawn an Explore agent</span>
+<span class="hl-comment"># with read-only tools (Glob, Grep, Read)</span>
+<span class="hl-comment"># running on the fast Haiku model</span>
+                        </div>
+
+                        <div class="callout tip" style="margin-top: 1rem;">
+                            <div class="callout-title">&#9989; Best Practice</div>
+                            <p style="margin-bottom: 0;">Use Explore instead of direct Grep/Glob for open-ended searches - it handles multiple iterations automatically.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 6: Creating Custom Agents ==================== -->
+        <section class="slide" data-slide="6">
+            <div class="slide-content">
+                <h1 class="slide-title">Creating <span class="highlight">Custom Agents</span></h1>
+                <p class="slide-subtitle">Define specialized agents for your workflow</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Storage Locations</h2>
+                        <div class="dir-tree">
+<span class="folder">~/.claude/agents/</span>        <span class="comment"># User-level (all projects)</span>
+  <span class="file">code-reviewer.md</span>
+  <span class="file">debugger.md</span>
+
+<span class="folder">.claude/agents/</span>           <span class="comment"># Project-level (shared via git)</span>
+  <span class="file">api-specialist.md</span>
+  <span class="file">test-writer.md</span>
+                        </div>
+
+                        <h2 style="margin-top: 1.5rem;">Priority Order</h2>
+                        <ol>
+                            <li><strong>Session flag</strong> (<code class="inline-code">--agents</code>)</li>
+                            <li><strong>Project</strong> (<code class="inline-code">.claude/agents/</code>)</li>
+                            <li><strong>User</strong> (<code class="inline-code">~/.claude/agents/</code>)</li>
+                            <li><strong>Plugin</strong> agents</li>
+                        </ol>
+                    </div>
+                    <div>
+                        <h2>Creation Methods</h2>
+
+                        <h3>1. Interactive CLI</h3>
+                        <div class="code-block" data-lang="bash">
+<span class="hl-command">/agents</span>  <span class="hl-comment"># Opens agent management UI</span>
+                        </div>
+
+                        <h3>2. Manual File Creation</h3>
+                        <p>Create <code class="inline-code">.md</code> files in the agents directory with YAML frontmatter.</p>
+
+                        <h3>3. CLI Flag (Session-only)</h3>
+                        <div class="code-block" data-lang="bash">
+claude --agents '{
+  "my-agent": {
+    "description": "...",
+    "prompt": "...",
+    "tools": ["Read", "Grep"]
+  }
+}'
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 7: Agent Configuration Example ==================== -->
+        <section class="slide" data-slide="7">
+            <div class="slide-content">
+                <h1 class="slide-title">Agent Configuration <span class="highlight">Example</span></h1>
+                <p class="slide-subtitle">A complete custom agent definition</p>
+
+                <div class="two-col">
+                    <div>
+                        <div class="code-block" data-lang="yaml">
+<span class="hl-delimiter">---</span>
+<span class="hl-key">name</span>: <span class="hl-string">code-reviewer</span>
+<span class="hl-key">description</span>: <span class="hl-string">Expert code review specialist
+  for security and best practices</span>
+<span class="hl-key">tools</span>:
+  - <span class="hl-string">Read</span>
+  - <span class="hl-string">Grep</span>
+  - <span class="hl-string">Glob</span>
+  - <span class="hl-string">Bash</span>
+<span class="hl-key">model</span>: <span class="hl-string">sonnet</span>
+<span class="hl-key">permissionMode</span>: <span class="hl-string">default</span>
+<span class="hl-delimiter">---</span>
+
+<span class="hl-comment"># Code Review Specialist</span>
+
+You are an expert code reviewer focusing on:
+- Security vulnerabilities
+- Performance issues
+- Code maintainability
+- Best practices adherence
+
+Always provide specific line references
+and actionable feedback.
+                        </div>
+                    </div>
+                    <div>
+                        <h2>Key Components</h2>
+
+                        <h3>Frontmatter (YAML)</h3>
+                        <ul>
+                            <li><strong>name</strong> - Unique identifier</li>
+                            <li><strong>description</strong> - When to use (helps Claude decide)</li>
+                            <li><strong>tools</strong> - Allowed tools (restrictive)</li>
+                            <li><strong>model</strong> - AI model to use</li>
+                        </ul>
+
+                        <h3 style="margin-top: 1rem;">Body (Markdown)</h3>
+                        <ul>
+                            <li>Custom system prompt</li>
+                            <li>Behavioral instructions</li>
+                            <li>Domain expertise</li>
+                            <li>Output format requirements</li>
+                        </ul>
+
+                        <div class="callout tip" style="margin-top: 1rem;">
+                            <div class="callout-title">&#128161; Tip</div>
+                            <p style="margin-bottom: 0;">Include "use proactively" in the description to encourage Claude to delegate automatically.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 8: Agent Frontmatter Reference ==================== -->
+        <section class="slide" data-slide="8">
+            <div class="slide-content">
+                <h1 class="slide-title">Agent Frontmatter <span class="highlight">Reference</span></h1>
+                <p class="slide-subtitle">Complete configuration options for custom agents</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Required</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>name</code></td>
+                                <td><span class="badge green">Yes</span></td>
+                                <td>Unique identifier for the agent</td>
+                            </tr>
+                            <tr>
+                                <td><code>description</code></td>
+                                <td><span class="badge green">Yes</span></td>
+                                <td>When to use this agent (helps Claude auto-delegate)</td>
+                            </tr>
+                            <tr>
+                                <td><code>tools</code></td>
+                                <td><span class="badge blue">No</span></td>
+                                <td>List of allowed tools (e.g., Read, Grep, Edit)</td>
+                            </tr>
+                            <tr>
+                                <td><code>disallowedTools</code></td>
+                                <td><span class="badge blue">No</span></td>
+                                <td>Tools to explicitly deny from inherited set</td>
+                            </tr>
+                            <tr>
+                                <td><code>model</code></td>
+                                <td><span class="badge blue">No</span></td>
+                                <td><code>sonnet</code> | <code>opus</code> | <code>haiku</code> | <code>inherit</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>permissionMode</code></td>
+                                <td><span class="badge blue">No</span></td>
+                                <td><code>default</code> | <code>acceptEdits</code> | <code>dontAsk</code> | <code>plan</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>skills</code></td>
+                                <td><span class="badge blue">No</span></td>
+                                <td>Skills to preload into agent context</td>
+                            </tr>
+                            <tr>
+                                <td><code>hooks</code></td>
+                                <td><span class="badge blue">No</span></td>
+                                <td>Lifecycle hooks: PreToolUse, PostToolUse, Stop</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="callout warning" style="margin-top: 1.5rem;">
+                    <div class="callout-title">&#9888; Permission Modes</div>
+                    <p style="margin-bottom: 0;"><code class="inline-code">bypassPermissions</code> skips all safety checks - use with extreme caution. Prefer <code class="inline-code">acceptEdits</code> for automation.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 9: Introduction to Skills ==================== -->
+        <section class="slide" data-slide="9">
+            <div class="slide-content">
+                <h1 class="slide-title">Introduction to <span class="highlight">Skills</span></h1>
+                <p class="slide-subtitle">Reusable prompts and workflows Claude loads when relevant</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>What Are Skills?</h2>
+                        <p>Skills are folders of instructions, scripts, and resources that teach Claude how to complete specific tasks in a repeatable way.</p>
+
+                        <h3 style="margin-top: 1rem;">Key Characteristics</h3>
+                        <ul>
+                            <li><strong>Minimum requirement:</strong> A <code class="inline-code">SKILL.md</code> file</li>
+                            <li><strong>Can include:</strong> Templates, examples, scripts</li>
+                            <li><strong>Progressive loading:</strong> Context-efficient</li>
+                            <li><strong>Hot-reloading:</strong> Changes apply immediately</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2>Invocation Methods</h2>
+
+                        <div class="cards-grid" style="grid-template-columns: 1fr;">
+                            <div class="card">
+                                <h3>&#9312; Automatic</h3>
+                                <p>Claude detects when a skill is relevant and loads it automatically based on the description.</p>
+                            </div>
+                            <div class="card">
+                                <h3>&#9313; Manual (Slash Command)</h3>
+                                <div class="code-block" data-lang="command" style="margin-bottom: 0;">
+<span class="hl-command">/skill-name</span>
+<span class="hl-command">/skill-name argument1 argument2</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="callout" style="margin-top: 1.5rem;">
+                    <div class="callout-title">&#128260; Skills vs Agents</div>
+                    <p style="margin-bottom: 0;"><strong>Skills</strong> run in the main conversation context by default. <strong>Agents</strong> run in isolated contexts. Use <code class="inline-code">context: fork</code> to run a skill in a subagent.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 10: SKILL.md Structure ==================== -->
+        <section class="slide" data-slide="10">
+            <div class="slide-content">
+                <h1 class="slide-title">SKILL.md <span class="highlight">Structure</span></h1>
+                <p class="slide-subtitle">How to organize a skill</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Directory Layout</h2>
+                        <div class="dir-tree">
+<span class="folder">~/.claude/skills/</span>
+  <span class="folder">my-skill/</span>
+    <span class="file">SKILL.md</span>         <span class="comment"># Required: main instructions</span>
+    <span class="file">template.md</span>      <span class="comment"># Optional: fill-in template</span>
+    <span class="folder">examples/</span>
+      <span class="file">sample.md</span>      <span class="comment"># Example outputs</span>
+    <span class="folder">scripts/</span>
+      <span class="file">validate.sh</span>    <span class="comment"># Helper scripts</span>
+                        </div>
+
+                        <h2 style="margin-top: 1.5rem;">Storage Locations</h2>
+                        <ul>
+                            <li><code class="inline-code">~/.claude/skills/</code> - Personal (all projects)</li>
+                            <li><code class="inline-code">.claude/skills/</code> - Project (shared via git)</li>
+                            <li>Plugin skills directory</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2>SKILL.md Example</h2>
+                        <div class="code-block" data-lang="markdown">
+<span class="hl-delimiter">---</span>
+<span class="hl-key">name</span>: <span class="hl-string">pr-summary</span>
+<span class="hl-key">description</span>: <span class="hl-string">Generate PR summaries
+  from git diff</span>
+<span class="hl-key">argument-hint</span>: <span class="hl-string">[branch-name]</span>
+<span class="hl-delimiter">---</span>
+
+<span class="hl-comment"># PR Summary Generator</span>
+
+Generate a concise PR summary based on
+the changes in $ARGUMENTS.
+
+<span class="hl-comment">## Steps</span>
+1. Get the diff: !`git diff main...$ARGUMENTS`
+2. Analyze changes by category
+3. Write summary with:
+   - Title (under 70 chars)
+   - Bullet points of changes
+   - Testing notes
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 11: Skill Configuration Reference ==================== -->
+        <section class="slide" data-slide="11">
+            <div class="slide-content">
+                <h1 class="slide-title">Skill Frontmatter <span class="highlight">Reference</span></h1>
+                <p class="slide-subtitle">Complete configuration options for skills</p>
+
+                <div class="table-wrapper">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Field</th>
+                                <th>Purpose</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><code>name</code></td>
+                                <td>Display name and slash command name (lowercase, max 64 chars)</td>
+                            </tr>
+                            <tr>
+                                <td><code>description</code></td>
+                                <td>What the skill does - helps Claude trigger automatically</td>
+                            </tr>
+                            <tr>
+                                <td><code>argument-hint</code></td>
+                                <td>Hint for expected arguments (e.g., <code>[file] [format]</code>)</td>
+                            </tr>
+                            <tr>
+                                <td><code>disable-model-invocation</code></td>
+                                <td>Set <code>true</code> to prevent auto-triggering (manual only)</td>
+                            </tr>
+                            <tr>
+                                <td><code>user-invocable</code></td>
+                                <td>Set <code>false</code> to hide from <code>/</code> menu (background knowledge)</td>
+                            </tr>
+                            <tr>
+                                <td><code>allowed-tools</code></td>
+                                <td>Tools Claude can use without permission when skill is active</td>
+                            </tr>
+                            <tr>
+                                <td><code>model</code></td>
+                                <td>Specific model to use when skill executes</td>
+                            </tr>
+                            <tr>
+                                <td><code>context</code></td>
+                                <td>Set to <code>fork</code> to run in isolated subagent</td>
+                            </tr>
+                            <tr>
+                                <td><code>agent</code></td>
+                                <td>Subagent type to use with <code>context: fork</code></td>
+                            </tr>
+                            <tr>
+                                <td><code>hooks</code></td>
+                                <td>PreToolUse, PostToolUse, Stop hooks scoped to skill</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 12: Built-in vs Custom Skills ==================== -->
+        <section class="slide" data-slide="12">
+            <div class="slide-content">
+                <h1 class="slide-title">Built-in vs <span class="highlight">Custom Skills</span></h1>
+                <p class="slide-subtitle">Understanding skill types and priority</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Built-in Slash Commands</h2>
+                        <p>System commands (not customizable skills):</p>
+                        <div class="code-block" data-lang="commands">
+<span class="hl-command">/clear</span>     <span class="hl-comment"># Clear conversation</span>
+<span class="hl-command">/compact</span>   <span class="hl-comment"># Compress context</span>
+<span class="hl-command">/config</span>    <span class="hl-comment"># Open settings</span>
+<span class="hl-command">/context</span>   <span class="hl-comment"># Visualize usage</span>
+<span class="hl-command">/help</span>      <span class="hl-comment"># Get help</span>
+<span class="hl-command">/memory</span>    <span class="hl-comment"># Edit CLAUDE.md</span>
+<span class="hl-command">/model</span>     <span class="hl-comment"># Select model</span>
+<span class="hl-command">/plan</span>      <span class="hl-comment"># Enter plan mode</span>
+<span class="hl-command">/resume</span>    <span class="hl-comment"># Resume session</span>
+<span class="hl-command">/rewind</span>    <span class="hl-comment"># Undo changes</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h2>Custom Skill Locations</h2>
+                        <ul>
+                            <li><span class="badge purple">Enterprise</span> Managed settings (highest)</li>
+                            <li><span class="badge blue">Personal</span> <code class="inline-code">~/.claude/skills/</code></li>
+                            <li><span class="badge green">Project</span> <code class="inline-code">.claude/skills/</code></li>
+                            <li><span class="badge orange">Plugin</span> Plugin skills directory</li>
+                        </ul>
+
+                        <div class="callout" style="margin-top: 1.5rem;">
+                            <div class="callout-title">&#128260; Priority Rule</div>
+                            <p style="margin-bottom: 0;">Higher-priority locations override lower ones. If a skill and command share the same name, the skill takes precedence.</p>
+                        </div>
+
+                        <h3 style="margin-top: 1rem;">Pre-built Skills (Anthropic)</h3>
+                        <ul>
+                            <li>PDF - Creation, extraction, form filling</li>
+                            <li>Word (DOCX) - Document editing</li>
+                            <li>PowerPoint (PPTX) - Presentations</li>
+                            <li>Excel (XLSX) - Spreadsheets</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 13: Slash Command Patterns ==================== -->
+        <section class="slide" data-slide="13">
+            <div class="slide-content">
+                <h1 class="slide-title">Slash Command <span class="highlight">Patterns</span></h1>
+                <p class="slide-subtitle">Invocation syntax and dynamic context injection</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Basic Invocation</h2>
+                        <div class="code-block" data-lang="terminal">
+<span class="hl-comment"># Simple invocation</span>
+<span class="hl-command">/skill-name</span>
+
+<span class="hl-comment"># With arguments</span>
+<span class="hl-command">/fix-issue 123</span>
+<span class="hl-command">/deploy production</span>
+
+<span class="hl-comment"># Multiple arguments</span>
+<span class="hl-command">/convert file.md pdf</span>
+                        </div>
+
+                        <h2 style="margin-top: 1.5rem;">Argument Variables</h2>
+                        <div class="code-block" data-lang="skill">
+<span class="hl-comment"># In SKILL.md:</span>
+
+<span class="hl-key">$ARGUMENTS</span>    <span class="hl-comment"># All arguments</span>
+<span class="hl-key">$0</span>            <span class="hl-comment"># First argument</span>
+<span class="hl-key">$1</span>            <span class="hl-comment"># Second argument</span>
+<span class="hl-key">$ARGUMENTS[0]</span> <span class="hl-comment"># Same as $0</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h2>Dynamic Context Injection</h2>
+                        <p>Execute shell commands and inject output:</p>
+                        <div class="code-block" data-lang="skill">
+<span class="hl-delimiter">---</span>
+<span class="hl-key">name</span>: <span class="hl-string">pr-review</span>
+<span class="hl-delimiter">---</span>
+
+<span class="hl-comment"># PR Review</span>
+
+<span class="hl-comment">## Current Changes</span>
+!`git diff main...HEAD`
+
+<span class="hl-comment">## PR Comments</span>
+!`gh pr view --comments`
+
+Review the above and provide feedback.
+                        </div>
+
+                        <div class="callout tip" style="margin-top: 1rem;">
+                            <div class="callout-title">&#128161; Backtick Syntax</div>
+                            <p style="margin-bottom: 0;">Use <code class="inline-code">!`command`</code> to run a shell command and replace the placeholder with its output before sending to Claude.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 14: Using Agents and Skills Together ==================== -->
+        <section class="slide" data-slide="14">
+            <div class="slide-content">
+                <h1 class="slide-title">Agents & Skills <span class="highlight">Together</span></h1>
+                <p class="slide-subtitle">Combining both for powerful workflows</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Skills in Subagents</h2>
+                        <p>Run a skill in an isolated context:</p>
+                        <div class="code-block" data-lang="yaml">
+<span class="hl-delimiter">---</span>
+<span class="hl-key">name</span>: <span class="hl-string">deep-research</span>
+<span class="hl-key">description</span>: <span class="hl-string">Thorough codebase research</span>
+<span class="hl-key">context</span>: <span class="hl-string">fork</span>
+<span class="hl-key">agent</span>: <span class="hl-string">Explore</span>
+<span class="hl-delimiter">---</span>
+
+Research $ARGUMENTS thoroughly...
+                        </div>
+
+                        <h2 style="margin-top: 1.5rem;">Preloading Skills in Agents</h2>
+                        <div class="code-block" data-lang="yaml">
+<span class="hl-comment"># In agent frontmatter:</span>
+<span class="hl-key">skills</span>:
+  - <span class="hl-string">code-standards</span>
+  - <span class="hl-string">testing-guidelines</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h2>Decision Matrix</h2>
+                        <div class="table-wrapper">
+                            <table style="font-size: 0.85rem;">
+                                <thead>
+                                    <tr>
+                                        <th>Use Case</th>
+                                        <th>Best Choice</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>Quick, repeatable task</td>
+                                        <td><span class="badge green">Skill</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Needs isolated context</td>
+                                        <td><span class="badge blue">Agent</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Verbose output isolation</td>
+                                        <td><span class="badge blue">Agent</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Tool restrictions needed</td>
+                                        <td><span class="badge blue">Agent</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Parallel execution</td>
+                                        <td><span class="badge blue">Multiple Agents</span></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Team-shared workflows</td>
+                                        <td><span class="badge green">Skill</span> in <code>.claude/</code></td>
+                                    </tr>
+                                    <tr>
+                                        <td>Skill + isolation</td>
+                                        <td><span class="badge purple">Skill</span> + <code>context: fork</code></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 15: Best Practices ==================== -->
+        <section class="slide" data-slide="15">
+            <div class="slide-content">
+                <h1 class="slide-title">Best Practices <span class="highlight">Summary</span></h1>
+                <p class="slide-subtitle">Key recommendations for agents and skills</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>&#128295; Agents</h2>
+                        <ul>
+                            <li><strong>Design focused, single-purpose agents</strong><br>
+                                <span style="color: var(--text-muted);">One agent = one specialized task</span></li>
+                            <li><strong>Write detailed descriptions</strong><br>
+                                <span style="color: var(--text-muted);">Helps Claude know when to delegate</span></li>
+                            <li><strong>Limit tool access</strong><br>
+                                <span style="color: var(--text-muted);">Only include tools the agent needs</span></li>
+                            <li><strong>Use Haiku for exploration</strong><br>
+                                <span style="color: var(--text-muted);">Fast and cost-effective for read-only tasks</span></li>
+                            <li><strong>Check agents into version control</strong><br>
+                                <span style="color: var(--text-muted);">Share team workflows via <code class="inline-code">.claude/agents/</code></span></li>
+                            <li><strong>Use parallelization</strong><br>
+                                <span style="color: var(--text-muted);">Spawn multiple agents for independent research</span></li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2>&#9889; Skills</h2>
+                        <ul>
+                            <li><strong>Keep SKILL.md concise</strong><br>
+                                <span style="color: var(--text-muted);">Under 500 lines; use supporting files for references</span></li>
+                            <li><strong>Use dynamic context injection</strong><br>
+                                <span style="color: var(--text-muted);"><code class="inline-code">!`command`</code> for fresh data</span></li>
+                            <li><strong>Control invocation appropriately</strong><br>
+                                <span style="color: var(--text-muted);">Use <code class="inline-code">disable-model-invocation</code> for sensitive skills</span></li>
+                            <li><strong>Test both invocation methods</strong><br>
+                                <span style="color: var(--text-muted);">Verify auto and manual (<code class="inline-code">/name</code>) work correctly</span></li>
+                            <li><strong>Use <code class="inline-code">context: fork</code> wisely</strong><br>
+                                <span style="color: var(--text-muted);">For tasks producing verbose output</span></li>
+                            <li><strong>Provide argument hints</strong><br>
+                                <span style="color: var(--text-muted);">Use <code class="inline-code">argument-hint</code> for discoverability</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="callout important" style="margin-top: 1.5rem;">
+                    <div class="callout-title">&#127919; Golden Rule</div>
+                    <p style="margin-bottom: 0;">Context is your most valuable resource. Use agents to isolate verbose operations and skills to encode repeatable workflows.</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 16: Resources ==================== -->
+        <section class="slide" data-slide="16">
+            <div class="slide-content">
+                <h1 class="slide-title">Resources & <span class="highlight">Next Steps</span></h1>
+                <p class="slide-subtitle">Continue learning and building</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Official Documentation</h2>
+                        <ul class="link-list">
+                            <li>
+                                <a href="https://code.claude.com/docs/en/sub-agents" target="_blank">Create Custom Subagents</a>
+                                <br><span style="color: var(--text-muted); font-size: 0.85rem;">Complete agent configuration guide</span>
+                            </li>
+                            <li>
+                                <a href="https://code.claude.com/docs/en/skills" target="_blank">Extend Claude with Skills</a>
+                                <br><span style="color: var(--text-muted); font-size: 0.85rem;">SKILL.md structure and patterns</span>
+                            </li>
+                            <li>
+                                <a href="https://code.claude.com/docs/en/best-practices" target="_blank">Best Practices Guide</a>
+                                <br><span style="color: var(--text-muted); font-size: 0.85rem;">Context management and workflows</span>
+                            </li>
+                            <li>
+                                <a href="https://github.com/anthropics/claude-code" target="_blank">GitHub Repository</a>
+                                <br><span style="color: var(--text-muted); font-size: 0.85rem;">Source code and examples</span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h2>Community Resources</h2>
+                        <ul class="link-list">
+                            <li>
+                                <a href="https://github.com/anthropics/skills" target="_blank">Anthropic Skills Repository</a>
+                                <br><span style="color: var(--text-muted); font-size: 0.85rem;">Pre-built skills for common tasks</span>
+                            </li>
+                            <li>
+                                <a href="https://github.com/VoltAgent/awesome-claude-code-subagents" target="_blank">Awesome Claude Code Subagents</a>
+                                <br><span style="color: var(--text-muted); font-size: 0.85rem;">Community-contributed agents</span>
+                            </li>
+                        </ul>
+
+                        <h2 style="margin-top: 1.5rem;">Related Features</h2>
+                        <ul>
+                            <li><strong>MCP Servers</strong> - External tool integrations</li>
+                            <li><strong>Hooks</strong> - Lifecycle event handlers</li>
+                            <li><strong>Plugins</strong> - Bundled extensions</li>
+                            <li><strong>CLAUDE.md</strong> - Project memory</li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div style="text-align: center; margin-top: 2rem; color: var(--text-muted);">
+                    <p>&#9998; Start building: <code class="inline-code">/agents</code> or create <code class="inline-code">.claude/skills/my-skill/SKILL.md</code></p>
+                </div>
+            </div>
+        </section>
+
+    </div>
+
+    <script>
+        // ==================== Presentation Controller ====================
+        class Presentation {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.currentSlide = 0;
+                this.totalSlides = this.slides.length;
+
+                this.progressBar = document.getElementById('progressBar');
+                this.progressText = document.getElementById('progressText');
+                this.prevBtn = document.getElementById('prevBtn');
+                this.nextBtn = document.getElementById('nextBtn');
+
+                this.init();
+            }
+
+            init() {
+                // Keyboard navigation
+                document.addEventListener('keydown', (e) => this.handleKeydown(e));
+
+                // Touch/swipe support
+                this.initTouchNavigation();
+
+                // Button navigation
+                this.prevBtn.addEventListener('click', () => this.prev());
+                this.nextBtn.addEventListener('click', () => this.next());
+
+                // URL hash support
+                this.handleHashChange();
+                window.addEventListener('hashchange', () => this.handleHashChange());
+
+                // Initialize first slide
+                this.showSlide(this.currentSlide);
+            }
+
+            handleKeydown(e) {
+                switch(e.key) {
+                    case 'ArrowRight':
+                    case 'ArrowDown':
+                    case ' ':
+                    case 'PageDown':
+                        e.preventDefault();
+                        this.next();
+                        break;
+                    case 'ArrowLeft':
+                    case 'ArrowUp':
+                    case 'PageUp':
+                        e.preventDefault();
+                        this.prev();
+                        break;
+                    case 'Home':
+                        e.preventDefault();
+                        this.goTo(0);
+                        break;
+                    case 'End':
+                        e.preventDefault();
+                        this.goTo(this.totalSlides - 1);
+                        break;
+                    case 'f':
+                    case 'F':
+                        this.toggleFullscreen();
+                        break;
+                }
+            }
+
+            initTouchNavigation() {
+                let touchStartX = 0;
+                let touchEndX = 0;
+
+                document.addEventListener('touchstart', (e) => {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, { passive: true });
+
+                document.addEventListener('touchend', (e) => {
+                    touchEndX = e.changedTouches[0].screenX;
+                    const diff = touchStartX - touchEndX;
+
+                    if (Math.abs(diff) > 50) {
+                        if (diff > 0) {
+                            this.next();
+                        } else {
+                            this.prev();
+                        }
+                    }
+                }, { passive: true });
+            }
+
+            showSlide(index) {
+                // Clamp index
+                index = Math.max(0, Math.min(index, this.totalSlides - 1));
+
+                // Update slide classes
+                this.slides.forEach((slide, i) => {
+                    slide.classList.remove('active', 'prev', 'next');
+                    if (i === index) {
+                        slide.classList.add('active');
+                    } else if (i < index) {
+                        slide.classList.add('prev');
+                    } else {
+                        slide.classList.add('next');
+                    }
+                });
+
+                this.currentSlide = index;
+                this.updateProgress();
+                this.updateHash();
+                this.updateButtons();
+            }
+
+            next() {
+                if (this.currentSlide < this.totalSlides - 1) {
+                    this.showSlide(this.currentSlide + 1);
+                }
+            }
+
+            prev() {
+                if (this.currentSlide > 0) {
+                    this.showSlide(this.currentSlide - 1);
+                }
+            }
+
+            goTo(index) {
+                this.showSlide(index);
+            }
+
+            updateProgress() {
+                const progress = ((this.currentSlide + 1) / this.totalSlides) * 100;
+                this.progressBar.style.width = `${progress}%`;
+                this.progressText.textContent = `${this.currentSlide + 1} / ${this.totalSlides}`;
+            }
+
+            updateHash() {
+                history.replaceState(null, null, `#slide-${this.currentSlide + 1}`);
+            }
+
+            handleHashChange() {
+                const hash = window.location.hash;
+                const match = hash.match(/^#slide-(\d+)$/);
+                if (match) {
+                    const slideNum = parseInt(match[1], 10) - 1;
+                    if (slideNum >= 0 && slideNum < this.totalSlides) {
+                        this.showSlide(slideNum);
+                    }
+                }
+            }
+
+            updateButtons() {
+                this.prevBtn.disabled = this.currentSlide === 0;
+                this.nextBtn.disabled = this.currentSlide === this.totalSlides - 1;
+            }
+
+            toggleFullscreen() {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    document.exitFullscreen();
+                }
+            }
+        }
+
+        // Initialize on DOM ready
+        document.addEventListener('DOMContentLoaded', () => {
+            new Presentation();
+        });
+    </script>
+</body>
+</html>

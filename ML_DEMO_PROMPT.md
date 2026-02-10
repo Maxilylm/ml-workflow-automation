@@ -110,37 +110,79 @@ Create all code in a Jupyter notebook at notebooks/titanic_classification.ipynb
 ```
 claude-code-test/
 ├── .claude/
-│   ├── agents/
+│   ├── agents/                      # Agent definitions
 │   │   ├── ml-theory-advisor.md
 │   │   ├── feature-engineering-analyst.md
 │   │   ├── brutal-code-reviewer.md
 │   │   ├── frontend-ux-analyst.md
 │   │   ├── eda-analyst.md
 │   │   └── mlops-engineer.md
-│   └── skills/
+│   └── commands/                    # Skills/commands
 │       ├── eda.md
 │       ├── preprocess.md
 │       ├── train.md
-│       └── evaluate.md
+│       ├── evaluate.md
+│       ├── deploy.md
+│       ├── test.md
+│       ├── report.md
+│       ├── team-coldstart.md
+│       ├── team-analyze.md
+│       └── team-review.md
+├── .github/
+│   └── workflows/
+│       ├── ci.yml                   # Continuous Integration
+│       └── cd.yml                   # Continuous Deployment
+├── api/                             # FastAPI endpoints
+│   └── __init__.py
+├── app/                             # Streamlit dashboard
+│   ├── __init__.py
+│   └── components/
 ├── data/
-│   └── titanic.csv          # 891 samples, 12 features
-├── models/
-│   └── titanic_model.joblib # Serialized trained model
-├── notebooks/
-│   └── titanic_classification.ipynb
-├── src/
+│   ├── raw/                         # Raw data files
+│   │   └── .gitkeep
+│   ├── processed/                   # Processed data
+│   │   └── .gitkeep
+│   └── schemas/                     # Data schemas
+│       └── schema_template.yaml
+├── deploy/
+│   ├── docker/
+│   │   ├── Dockerfile               # API container
+│   │   ├── Dockerfile.streamlit     # Dashboard container
+│   │   ├── docker-compose.yml       # Local deployment
+│   │   └── prometheus.yml           # Monitoring config
+│   ├── snowflake/
+│   │   ├── setup.sql                # Snowflake setup
+│   │   ├── udfs.sql                 # UDF definitions
+│   │   └── streamlit/
+│   │       └── app.py               # Streamlit in Snowflake
+│   └── terraform/
+│       └── .gitkeep
+├── docs/                            # Documentation
+│   └── .gitkeep
+├── models/                          # Trained models
+│   └── .gitkeep
+├── notebooks/                       # Jupyter notebooks
+│   └── .gitkeep
+├── reports/                         # Generated reports
+│   ├── .gitkeep
+│   └── figures/
+├── src/                             # Source code
 │   ├── __init__.py
-│   ├── preprocessing.py     # Feature engineering & preprocessing pipeline
-│   ├── model.py             # Model training & loading functions
-│   └── predict.py           # CLI prediction tool
-├── app/
-│   └── dashboard.py         # Streamlit interactive dashboard
-├── tests/
+│   ├── data/                        # Data utilities
+│   ├── preprocessing/               # Preprocessing modules
+│   └── utils/                       # Shared utilities
+├── tests/                           # Test suite
 │   ├── __init__.py
-│   ├── test_preprocessing.py
-│   └── test_model.py
-├── requirements.txt         # Python dependencies
-└── ML_DEMO_PROMPT.md        # This file
+│   ├── fixtures/
+│   ├── integration/
+│   └── unit/
+├── .gitignore
+├── .pre-commit-config.yaml          # Pre-commit hooks
+├── .yamllint.yml                    # YAML linting config
+├── config.yaml                      # Project configuration
+├── requirements.txt                 # Production dependencies
+├── requirements-dev.txt             # Development dependencies
+└── ML_DEMO_PROMPT.md                # This file
 ```
 
 ---

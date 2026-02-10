@@ -1,0 +1,59 @@
+# Data Schema Template
+# Copy and customize for your dataset
+
+schema:
+  name: "your_dataset"
+  version: "1.0"
+  description: "Description of your dataset"
+
+  columns:
+    - name: "id"
+      type: "integer"
+      nullable: false
+      primary_key: true
+      description: "Unique identifier"
+
+    - name: "target"
+      type: "integer"
+      nullable: false
+      valid_values: [0, 1]
+      description: "Target variable for classification"
+      role: "target"
+
+    - name: "feature_1"
+      type: "float"
+      nullable: true
+      description: "Numeric feature"
+      imputation: "median"
+
+    - name: "feature_2"
+      type: "string"
+      nullable: false
+      valid_values: ["A", "B", "C"]
+      description: "Categorical feature"
+
+  derived_features:
+    - name: "derived_1"
+      formula: "feature_1 * 2"
+      type: "float"
+      description: "Example derived feature"
+
+  quality_rules:
+    - rule: "Feature 1 must be positive"
+      severity: "error"
+      check: "feature_1 >= 0"
+
+  preprocessing_recommendations:
+    drop_columns:
+      - "id"
+
+    encoding:
+      feature_2: "onehot"
+
+    scaling:
+      feature_1: "standard"
+
+  metadata:
+    source: "Your data source"
+    rows: 0
+    created_date: "YYYY-MM-DD"

@@ -1,0 +1,59 @@
+# Configuration for Data Science Automation Framework
+
+# Model configuration
+model:
+  model_type: random_forest
+  n_estimators: 100
+  max_depth: 10
+  random_state: 42
+  test_size: 0.2
+  cv_folds: 5
+
+# Data configuration
+data:
+  raw_path: data/raw
+  processed_path: data/processed
+  target_column: Survived
+  drop_columns:
+    - PassengerId
+    - Name
+    - Ticket
+    - Cabin
+
+# API configuration
+api:
+  host: 0.0.0.0
+  port: 8000
+  workers: 4
+  log_level: INFO
+
+# Snowflake configuration (use environment variables for secrets)
+snowflake:
+  role: DATA_SCIENTIST
+  warehouse: ML_WH
+  database: ML_PROJECT
+  schema: STAGING
+
+# Quality thresholds
+quality:
+  test_coverage_threshold: 80
+  max_missing_values_pct: 30
+  min_accuracy: 0.75
+  min_precision: 0.70
+  min_recall: 0.70
+
+# Logging configuration
+logging:
+  level: INFO
+  format: json
+  file: logs/app.log
+
+# Deployment configuration
+deployment:
+  default_target: local
+  docker:
+    image_name: ml-model
+    tag: latest
+  snowflake:
+    model_name: TITANIC_SURVIVAL_MODEL
+    udf_schema: MODELS

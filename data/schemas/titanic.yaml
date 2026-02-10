@@ -1,0 +1,157 @@
+# Titanic Dataset Schema
+# Used for data validation and documentation
+
+schema:
+  name: "titanic"
+  version: "1.0"
+  description: "Titanic passenger survival dataset for classification"
+
+  columns:
+    - name: "PassengerId"
+      type: "integer"
+      nullable: false
+      primary_key: true
+      description: "Unique passenger identifier"
+
+    - name: "Survived"
+      type: "integer"
+      nullable: false
+      valid_values: [0, 1]
+      description: "Survival indicator (0=No, 1=Yes)"
+      role: "target"
+
+    - name: "Pclass"
+      type: "integer"
+      nullable: false
+      valid_values: [1, 2, 3]
+      description: "Passenger class (1=Upper, 2=Middle, 3=Lower)"
+      importance: "high"
+
+    - name: "Name"
+      type: "string"
+      nullable: false
+      description: "Passenger name (contains title)"
+      feature_engineering: "extract_title"
+
+    - name: "Sex"
+      type: "string"
+      nullable: false
+      valid_values: ["male", "female"]
+      description: "Passenger sex"
+      importance: "high"
+
+    - name: "Age"
+      type: "float"
+      nullable: true
+      min_value: 0
+      max_value: 100
+      description: "Passenger age in years"
+      imputation: "median_by_pclass"
+      importance: "medium"
+
+    - name: "SibSp"
+      type: "integer"
+      nullable: false
+      min_value: 0
+      max_value: 10
+      description: "Number of siblings/spouses aboard"
+      feature_engineering: "family_size"
+
+    - name: "Parch"
+      type: "integer"
+      nullable: false
+      min_value: 0
+      max_value: 10
+      description: "Number of parents/children aboard"
+      feature_engineering: "family_size"
+
+    - name: "Ticket"
+      type: "string"
+      nullable: false
+      description: "Ticket number"
+      importance: "low"
+      recommendation: "drop"
+
+    - name: "Fare"
+      type: "float"
+      nullable: false
+      min_value: 0
+      max_value: 600
+      description: "Passenger fare"
+      importance: "medium"
+
+    - name: "Cabin"
+      type: "string"
+      nullable: true
+      description: "Cabin number"
+      missing_rate: 0.77
+      recommendation: "drop_or_extract_deck"
+
+    - name: "Embarked"
+      type: "string"
+      nullable: true
+      valid_values: ["C", "Q", "S"]
+      description: "Port of embarkation (C=Cherbourg, Q=Queenstown, S=Southampton)"
+      imputation: "mode"
+
+  derived_features:
+    - name: "FamilySize"
+      formula: "SibSp + Parch + 1"
+      type: "integer"
+      description: "Total family members aboard"
+
+    - name: "IsAlone"
+      formula: "1 if FamilySize == 1 else 0"
+      type: "integer"
+      description: "Whether passenger is traveling alone"
+
+    - name: "Title"
+      formula: "extract from Name"
+      type: "string"
+      description: "Title extracted from passenger name"
+
+    - name: "Deck"
+      formula: "first letter of Cabin"
+      type: "string"
+      description: "Deck level extracted from cabin"
+      optional: true
+
+  quality_rules:
+    - rule: "Age must be positive"
+      severity: "error"
+      check: "Age >= 0"
+
+    - rule: "Fare must be non-negative"
+      severity: "error"
+      check: "Fare >= 0"
+
+    - rule: "Family size should be reasonable"
+      severity: "warning"
+      check: "SibSp + Parch <= 10"
+
+    - rule: "Age and Pclass correlation"
+      severity: "info"
+      description: "First class passengers tend to be older"
+
+  preprocessing_recommendations:
+    drop_columns:
+      - "PassengerId"
+      - "Name"  # After title extraction
+      - "Ticket"
+      - "Cabin"  # Too many missing values
+
+    encoding:
+      Sex: "binary"
+      Embarked: "onehot"
+      Pclass: "ordinal_or_onehot"
+      Title: "target_encoding_or_onehot"
+
+    scaling:
+      Age: "standard"
+      Fare: "standard"
+
+  metadata:
+    source: "Kaggle Titanic Competition"
+    rows: 891
+    created_date: "2024-01-01"
+    last_updated: "2024-01-15"

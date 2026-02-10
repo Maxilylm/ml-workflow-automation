@@ -1,0 +1,138 @@
+{
+  "version": "1.0",
+  "description": "Event-driven hooks for the data science automation framework",
+  "hooks": {
+    "file_created": {
+      "src/**/*.py": {
+        "description": "Trigger test generation when Python files are created in src/",
+        "action": "invoke_agent",
+        "agent": "qa-test-agent",
+        "prompt": "A new Python file has been created: {file_path}. Generate comprehensive unit tests for all functions and classes in this file. Save tests to tests/unit/test_{filename}.py",
+        "priority": "high"
+      },
+      "api/**/*.py": {
+        "description": "Trigger API test generation for new API files",
+        "action": "invoke_agent",
+        "agent": "qa-test-agent",
+        "prompt": "A new API file has been created: {file_path}. Generate integration tests for all endpoints. Save tests to tests/integration/test_{filename}.py",
+        "priority": "high"
+      }
+    },
+    "file_modified": {
+      "src/preprocessing.py": {
+        "description": "Check for data leakage when preprocessing is modified",
+        "action": "invoke_agent",
+        "agent": "ml-theory-advisor",
+        "prompt": "The preprocessing module has been modified: {file_path}. Review the changes for potential data leakage, target leakage, or other ML pitfalls. Report any issues found.",
+        "priority": "critical"
+      },
+      "src/model.py": {
+        "description": "Review model changes for methodology issues",
+        "action": "invoke_agent",
+        "agent": "ml-theory-advisor",
+        "prompt": "The model module has been modified: {file_path}. Review for overfitting risks, improper evaluation, or methodology issues.",
+        "priority": "high"
+      },
+      "deploy/**/*": {
+        "description": "Review deployment configuration changes",
+        "action": "invoke_agent",
+        "agent": "mlops-engineer",
+        "prompt": "Deployment configuration has been modified: {file_path}. Review for security issues, missing health checks, or production readiness concerns.",
+        "priority": "high"
+      }
+    },
+    "function_created": {
+      "description": "Generate unit tests when new functions are added",
+      "pattern": "def {function_name}",
+      "action": "invoke_agent",
+      "agent": "qa-test-agent",
+      "prompt": "A new function '{function_name}' has been created in {file_path}. Generate unit tests covering: (1) happy path, (2) edge cases, (3) error handling. Include docstring documentation if missing.",
+      "priority": "medium"
+    },
+    "class_created": {
+      "description": "Generate tests and review class design",
+      "pattern": "class {class_name}",
+      "action": "invoke_agents",
+      "agents": ["qa-test-agent", "brutal-code-reviewer"],
+      "prompts": {
+        "qa-test-agent": "A new class '{class_name}' has been created in {file_path}. Generate comprehensive unit tests for all methods.",
+        "brutal-code-reviewer": "A new class '{class_name}' has been created in {file_path}. Review for design patterns, maintainability, and documentation."
+      },
+      "priority": "medium"
+    },
+    "pr_opened": {
+      "description": "Trigger multi-agent PR review",
+      "action": "invoke_agents",
+      "agents": ["pr-reviewer", "qa-test-agent"],
+      "prompts": {
+        "pr-reviewer": "PR #{pr_number} has been opened: {pr_title}. Coordinate a comprehensive review, engaging specialist reviewers as needed based on files changed.",
+        "qa-test-agent": "PR #{pr_number} has been opened. Review test coverage for all changed files. Block if coverage is below 80% or tests are missing for new functionality."
+      },
+      "priority": "critical"
+    },
+    "pr_updated": {
+      "description": "Re-review PR when changes are pushed",
+      "action": "invoke_agent",
+      "agent": "pr-reviewer",
+      "prompt": "PR #{pr_number} has been updated with new commits. Re-review the changes and update approval status.",
+      "priority": "high"
+    },
+    "model_trained": {
+      "description": "Validate trained model and prepare deployment",
+      "action": "invoke_agents",
+      "agents": ["ml-theory-advisor", "mlops-engineer"],
+      "prompts": {
+        "ml-theory-advisor": "A new model has been trained: {model_path}. Validate evaluation methodology, check for overfitting, and review metrics.",
+        "mlops-engineer": "A new model has been trained: {model_path}. Prepare production deployment artifacts: Docker config, API updates, monitoring setup."
+      },
+      "priority": "high"
+    },
+    "data_loaded": {
+      "description": "Validate data quality when new data is loaded",
+      "action": "invoke_agent",
+      "agent": "data-steward",
+      "prompt": "New data has been loaded: {data_path}. Perform data quality validation, check schema compliance, and track lineage.",
+      "priority": "high"
+    },
+    "deployment_requested": {
+      "description": "Coordinate deployment review",
+      "action": "invoke_agents",
+      "agents": ["mlops-engineer", "pr-reviewer"],
+      "prompts": {
+        "mlops-engineer": "Deployment has been requested for {target_environment}. Verify production checklist and prepare deployment.",
+        "pr-reviewer": "Deployment has been requested. Ensure all PRs are merged and approved before proceeding."
+      },
+      "priority": "critical"
+    },
+    "test_failure": {
+      "description": "Investigate and fix test failures",
+      "action": "invoke_agent",
+      "agent": "qa-test-agent",
+      "prompt": "Tests have failed: {test_output}. Investigate the root cause and suggest fixes.",
+      "priority": "critical"
+    },
+    "coverage_drop": {
+      "description": "Alert when test coverage drops",
+      "threshold": 80,
+      "action": "invoke_agent",
+      "agent": "qa-test-agent",
+      "prompt": "Test coverage has dropped below {threshold}% (current: {current_coverage}%). Identify uncovered code and generate additional tests.",
+      "priority": "high"
+    }
+  },
+  "simulated_triggers": {
+    "description": "These hooks are simulated via skill invocation for reliability",
+    "how_to_trigger": {
+      "file_created": "Run /test after creating new files",
+      "pr_opened": "Run /team review after creating PR",
+      "model_trained": "Run /evaluate after training",
+      "deployment_requested": "Run /deploy to trigger deployment review"
+    }
+  },
+  "configuration": {
+    "auto_trigger": false,
+    "require_confirmation": true,
+    "log_all_triggers": true,
+    "max_concurrent_agents": 3
+  }
+}

@@ -1,0 +1,183 @@
+{
+  "version": "1.0",
+  "description": "Agent access control matrix for the data science automation framework",
+  "access_control": {
+    "project-manager": {
+      "description": "Full orchestration authority",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": true,
+        "merge_pr": true,
+        "block_pr": true,
+        "create_branch": true,
+        "delete_branch": true,
+        "assign_tasks": true,
+        "manage_workflow": true
+      },
+      "scope": "all"
+    },
+    "pr-reviewer": {
+      "description": "Mandatory code review authority",
+      "permissions": {
+        "create_pr": false,
+        "approve_pr": true,
+        "merge_pr": true,
+        "block_pr": true,
+        "request_changes": true,
+        "coordinate_reviews": true
+      },
+      "scope": "all_prs"
+    },
+    "qa-test-agent": {
+      "description": "Quality assurance and test generation",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": true,
+        "merge_pr": false,
+        "block_pr": true,
+        "generate_tests": true,
+        "run_tests": true
+      },
+      "scope": "test_related",
+      "blocking_criteria": [
+        "coverage_below_threshold",
+        "missing_tests_for_new_code",
+        "failing_tests"
+      ]
+    },
+    "ml-theory-advisor": {
+      "description": "ML methodology review authority",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": true,
+        "merge_pr": false,
+        "block_pr": true
+      },
+      "scope": "ml_related",
+      "blocking_criteria": [
+        "data_leakage_detected",
+        "invalid_evaluation_methodology",
+        "overfitting_risk"
+      ]
+    },
+    "brutal-code-reviewer": {
+      "description": "Code quality enforcement",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": true,
+        "merge_pr": false,
+        "block_pr": true
+      },
+      "scope": "code_quality",
+      "blocking_criteria": [
+        "poor_maintainability",
+        "missing_documentation",
+        "security_vulnerabilities"
+      ]
+    },
+    "mlops-engineer": {
+      "description": "Deployment and production authority",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": true,
+        "merge_pr": false,
+        "block_pr": true,
+        "deploy_model": true,
+        "manage_infrastructure": true
+      },
+      "scope": "deployment_related",
+      "blocking_criteria": [
+        "missing_health_checks",
+        "no_rollback_plan",
+        "insufficient_monitoring"
+      ]
+    },
+    "snowflake-engineer": {
+      "description": "Snowflake platform authority",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": true,
+        "merge_pr": false,
+        "block_pr": true,
+        "deploy_to_snowflake": true,
+        "manage_snowflake_resources": true
+      },
+      "scope": "snowflake_related",
+      "blocking_criteria": [
+        "security_misconfiguration",
+        "cost_optimization_issues",
+        "performance_concerns"
+      ]
+    },
+    "eda-analyst": {
+      "description": "Data exploration specialist",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": false,
+        "merge_pr": false,
+        "block_pr": false
+      },
+      "scope": "analysis_only"
+    },
+    "feature-engineering-analyst": {
+      "description": "Feature design specialist",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": false,
+        "merge_pr": false,
+        "block_pr": false
+      },
+      "scope": "feature_engineering"
+    },
+    "data-steward": {
+      "description": "Data governance specialist",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": false,
+        "merge_pr": false,
+        "block_pr": false,
+        "validate_data": true,
+        "track_lineage": true,
+        "monitor_drift": true
+      },
+      "scope": "data_governance"
+    },
+    "frontend-ux-analyst": {
+      "description": "UI/UX review specialist",
+      "permissions": {
+        "create_pr": true,
+        "approve_pr": false,
+        "merge_pr": false,
+        "block_pr": false
+      },
+      "scope": "ui_ux_related"
+    }
+  },
+  "pr_workflow": {
+    "required_reviewers": ["pr-reviewer", "qa-test-agent"],
+    "auto_merge_conditions": [
+      "all_required_reviewers_approved",
+      "ci_tests_passing",
+      "coverage_threshold_met",
+      "no_blocking_comments"
+    ],
+    "specialist_triggers": {
+      "ml_code_changed": ["ml-theory-advisor"],
+      "preprocessing_changed": ["ml-theory-advisor", "data-steward"],
+      "deployment_code_changed": ["mlops-engineer"],
+      "snowflake_code_changed": ["snowflake-engineer"],
+      "ui_code_changed": ["frontend-ux-analyst"]
+    },
+    "escalation_rules": {
+      "security_concern": "escalate_to_human",
+      "reviewer_disagreement": "project_manager_mediates",
+      "critical_infrastructure": "require_human_approval"
+    }
+  },
+  "quality_gates": {
+    "test_coverage_threshold": 80,
+    "max_missing_values_pct": 30,
+    "required_documentation": ["README", "API_docs"],
+    "ci_checks_required": ["lint", "test", "security_scan"]
+  }
+}

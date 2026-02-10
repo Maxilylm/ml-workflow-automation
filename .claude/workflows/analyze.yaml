@@ -1,0 +1,129 @@
+# Analyze Workflow Definition
+# Quick analysis without full pipeline
+
+name: analyze
+description: Quick data analysis workflow
+version: "1.0"
+
+triggers:
+  - skill: team-analyze
+  - command: "/team analyze"
+
+inputs:
+  data_path:
+    type: string
+    required: true
+    description: Path to input data file
+  target:
+    type: string
+    required: false
+    description: Target variable name
+  focus:
+    type: string
+    required: false
+    default: "all"
+    enum: ["all", "eda", "leakage", "features"]
+  visualize:
+    type: boolean
+    default: false
+  output_format:
+    type: string
+    default: "markdown"
+    enum: ["markdown", "html", "json"]
+
+stages:
+  validate:
+    description: Validate input data
+    actions:
+      - validate_data:
+          path: "{data_path}"
+          checks:
+            - file_exists
+            - readable
+    outputs:
+      - data_valid
+
+  eda:
+    description: Exploratory data analysis
+    depends_on: [validate]
+    condition: "focus in ['all', 'eda']"
+    agents:
+      - eda-analyst:
+          prompt: |
+            Perform comprehensive EDA on {data_path}.
+            Target variable: {target or 'auto-detect'}
+            Generate visualizations: {visualize}
+
+            Include:
+            1. Data overview and quality
+            2. Statistical summaries
+            3. Distribution analysis
+            4. Correlation analysis
+            5. Target variable analysis
+          output: eda_report
+    outputs:
+      - eda_report
+      - eda_visualizations
+
+  leakage_review:
+    description: Data leakage assessment
+    depends_on: [validate]
+    condition: "focus in ['all', 'leakage']"
+    agents:
+      - ml-theory-advisor:
+          prompt: |
+            Review {data_path} for potential data leakage.
+            Target: {target or 'auto-detect'}
+
+            Check for:
+            1. Target leakage
+            2. Train-test leakage
+            3. Feature leakage
+            4. Indirect/proxy leakage
+          output: leakage_report
+    outputs:
+      - leakage_report
+      - risk_assessment
+
+  feature_analysis:
+    description: Feature engineering recommendations
+    depends_on: [validate]
+    condition: "focus in ['all', 'features']"
+    agents:
+      - feature-engineering-analyst:
+          prompt: |
+            Analyze {data_path} for feature engineering opportunities.
+            Target: {target or 'auto-detect'}
+
+            Provide:
+            1. New feature recommendations
+            2. Encoding strategies
+            3. Feature selection advice
+            4. Interaction suggestions
+          output: feature_recommendations
+    outputs:
+      - feature_recommendations
+
+  summarize:
+    description: Compile analysis summary
+    depends_on: [eda, leakage_review, feature_analysis]
+    actions:
+      - compile_report:
+          sections:
+            - executive_summary
+            - data_quality
+            - key_findings
+            - recommendations
+            - next_steps
+          format: "{output_format}"
+          output: "reports/analysis_{timestamp}.{output_format}"
+    outputs:
+      - analysis_report
+      - report_path
+
+output:
+  format: "{output_format}"
+  location: "reports/"
+  files:
+    - analysis_report
+    - visualizations (if visualize)

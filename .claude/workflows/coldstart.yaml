@@ -1,0 +1,225 @@
+# Cold Start Workflow Definition
+# Full ML pipeline from raw data to deployment
+
+name: coldstart
+description: Complete ML pipeline orchestration
+version: "1.0"
+
+triggers:
+  - skill: team-coldstart
+  - command: "/team coldstart"
+
+inputs:
+  data_path:
+    type: string
+    required: true
+    description: Path to input data file
+  target:
+    type: string
+    required: false
+    description: Target variable name (auto-detected if not provided)
+  deploy_to:
+    type: string
+    required: false
+    default: "local"
+    enum: ["local", "snowflake", "streamlit-sis", "aws", "gcp"]
+  skip_deploy:
+    type: boolean
+    default: false
+
+stages:
+  initialize:
+    description: Project setup and data validation
+    agents:
+      - data-steward
+    actions:
+      - create_branch: "feature/ml-pipeline-{timestamp}"
+      - create_tasks: true
+      - validate_data:
+          path: "{data_path}"
+          checks:
+            - file_exists
+            - readable
+            - min_rows: 10
+            - min_columns: 2
+    outputs:
+      - branch_name
+      - data_validation_report
+
+  analyze:
+    description: Exploratory data analysis
+    depends_on: [initialize]
+    parallel: true
+    agents:
+      - eda-analyst:
+          prompt: "Perform comprehensive EDA on {data_path}"
+          output: eda_report
+      - ml-theory-advisor:
+          prompt: "Review {data_path} for data leakage risks"
+          output: leakage_report
+      - feature-engineering-analyst:
+          prompt: "Recommend feature engineering for {data_path}"
+          output: feature_recommendations
+    outputs:
+      - eda_report
+      - leakage_report
+      - feature_recommendations
+
+  preprocess:
+    description: Build preprocessing pipeline
+    depends_on: [analyze]
+    agents:
+      - project-manager:
+          role: coordinator
+      - ml-theory-advisor:
+          role: validator
+      - qa-test-agent:
+          role: test_generator
+      - brutal-code-reviewer:
+          role: reviewer
+    actions:
+      - generate_code:
+          template: preprocessing
+          output: src/preprocessing.py
+      - generate_tests:
+          for: src/preprocessing.py
+          output: tests/unit/test_preprocessing.py
+      - create_pr:
+          title: "feat: Add preprocessing pipeline"
+          reviewers: [brutal-code-reviewer, ml-theory-advisor]
+      - await_approval
+      - merge_pr
+    quality_gates:
+      - test_coverage: 80
+      - no_leakage: true
+      - code_review_approved: true
+    outputs:
+      - preprocessing_module
+      - preprocessing_tests
+      - pr_merged
+
+  train:
+    description: Model training
+    depends_on: [preprocess]
+    agents:
+      - project-manager
+      - ml-theory-advisor
+      - qa-test-agent
+    actions:
+      - generate_code:
+          template: model
+          output: src/model.py
+      - train_models:
+          baseline: logistic_regression
+          advanced: [random_forest, xgboost]
+          cv_folds: 5
+      - generate_tests:
+          for: src/model.py
+          output: tests/unit/test_model.py
+      - create_pr:
+          title: "feat: Add model training"
+      - await_approval
+      - merge_pr
+    outputs:
+      - model_artifacts
+      - training_metrics
+      - model_tests
+
+  evaluate:
+    description: Model evaluation
+    depends_on: [train]
+    agents:
+      - project-manager
+      - ml-theory-advisor
+    actions:
+      - evaluate_model:
+          metrics: [accuracy, precision, recall, f1, auc_roc]
+          generate_plots: true
+      - validate_methodology:
+          agent: ml-theory-advisor
+    outputs:
+      - evaluation_report
+      - model_metrics
+      - plots
+
+  productionalize:
+    description: Create production code
+    depends_on: [evaluate]
+    agents:
+      - mlops-engineer
+      - qa-test-agent
+      - brutal-code-reviewer
+    actions:
+      - generate_code:
+          template: api
+          output: api/
+      - generate_code:
+          template: docker
+          output: [Dockerfile, docker-compose.yml]
+      - generate_tests:
+          for: api/
+          output: tests/integration/test_api.py
+      - create_pr:
+          title: "feat: Add production code"
+      - await_approval
+      - merge_pr
+    quality_gates:
+      - test_coverage: 80
+      - docker_builds: true
+      - health_check_exists: true
+    outputs:
+      - api_module
+      - docker_configs
+      - integration_tests
+
+  deploy:
+    description: Deploy to target environment
+    depends_on: [productionalize]
+    condition: "not skip_deploy"
+    agents:
+      - mlops-engineer:
+          condition: "deploy_to in ['local', 'aws', 'gcp']"
+      - snowflake-engineer:
+          condition: "deploy_to in ['snowflake', 'streamlit-sis']"
+      - frontend-ux-analyst:
+          condition: "deploy_to == 'streamlit-sis'"
+    actions:
+      - deploy:
+          target: "{deploy_to}"
+          verify_health: true
+    outputs:
+      - deployment_url
+      - deployment_status
+
+  finalize:
+    description: Generate reports and cleanup
+    depends_on: [deploy]
+    agents:
+      - project-manager
+    actions:
+      - generate_report:
+          template: final_report
+          output: reports/final_report.md
+      - verify_all_prs_merged
+      - close_tasks
+      - update_documentation
+    outputs:
+      - final_report
+      - project_summary
+
+error_handling:
+  on_stage_failure:
+    - log_error
+    - create_issue
+    - attempt_remediation
+    - notify_user
+  retry_policy:
+    max_retries: 2
+    backoff: exponential
+
+notifications:
+  on_complete:
+    - summary_report
+  on_failure:
+    - error_details
+    - suggested_fixes

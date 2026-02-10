@@ -1,0 +1,250 @@
+# Review Workflow Definition
+# Multi-agent code review coordination
+
+name: review
+description: Coordinate multi-agent code review
+version: "1.0"
+
+triggers:
+  - skill: team-review
+  - command: "/team review"
+
+inputs:
+  files:
+    type: array
+    required: false
+    description: Specific files to review (empty = all changes)
+  pr_number:
+    type: integer
+    required: false
+    description: PR number to review
+  focus:
+    type: string
+    required: false
+    default: "all"
+    enum: ["all", "ml", "deployment", "tests", "quality"]
+  strict:
+    type: boolean
+    default: false
+    description: Block on suggestions, not just issues
+
+stages:
+  identify_changes:
+    description: Identify files to review
+    actions:
+      - if_pr:
+          get_pr_files: "{pr_number}"
+      - else_if_files:
+          use: "{files}"
+      - else:
+          get_git_diff: ["staged", "unstaged"]
+      - categorize_files:
+          categories:
+            source: "src/**/*.py"
+            tests: "tests/**/*.py"
+            api: "api/**/*.py"
+            deployment: "deploy/**/*"
+            snowflake: "**/snowflake/**/*"
+            config: "*.yaml,*.json,*.toml"
+    outputs:
+      - files_to_review
+      - file_categories
+
+  mandatory_reviews:
+    description: Always-required reviews
+    depends_on: [identify_changes]
+    parallel: true
+    agents:
+      - pr-reviewer:
+          prompt: |
+            Review the following code changes for:
+            - Overall quality
+            - Security issues
+            - Best practices adherence
+
+            Files: {files_to_review}
+
+            Provide approval recommendation.
+          required: true
+          can_block: true
+          can_approve: true
+          can_merge: true
+
+      - qa-test-agent:
+          prompt: |
+            Review test coverage for: {files_to_review}
+
+            Check:
+            - Coverage >= 80%
+            - Test quality
+            - Edge cases
+            - Missing tests
+
+            Block if coverage insufficient.
+          required: true
+          can_block: true
+          can_approve: true
+
+      - brutal-code-reviewer:
+          condition: "file_categories.source is not empty"
+          prompt: |
+            Review for maintainability and AI-friendliness: {file_categories.source}
+
+            Check:
+            - Readability
+            - Documentation
+            - Complexity
+            - Naming conventions
+          can_block: true
+          can_approve: true
+    outputs:
+      - mandatory_reviews
+
+  conditional_reviews:
+    description: Specialist reviews based on file types
+    depends_on: [identify_changes]
+    parallel: true
+    agents:
+      - ml-theory-advisor:
+          condition: |
+            file_categories.source is not empty and
+            (focus == 'all' or focus == 'ml') and
+            any file contains 'model' or 'preprocess' or 'train'
+          prompt: |
+            Review ML methodology: {ml_files}
+
+            Check:
+            - Data leakage
+            - Evaluation validity
+            - Overfitting risks
+          can_block: true
+          can_approve: true
+          scope: "ml_related"
+
+      - mlops-engineer:
+          condition: |
+            (file_categories.deployment is not empty or
+             file_categories.api is not empty) and
+            (focus == 'all' or focus == 'deployment')
+          prompt: |
+            Review deployment readiness: {deployment_files}
+
+            Verify:
+            - Production checklist
+            - Security
+            - Health checks
+            - Monitoring
+          can_block: true
+          can_approve: true
+          scope: "deployment_related"
+
+      - snowflake-engineer:
+          condition: "file_categories.snowflake is not empty"
+          prompt: |
+            Review Snowflake code: {snowflake_files}
+
+            Check:
+            - Best practices
+            - Performance
+            - Security
+            - Cost implications
+          can_block: true
+          can_approve: true
+          scope: "snowflake_related"
+    outputs:
+      - conditional_reviews
+
+  collect_feedback:
+    description: Consolidate all review feedback
+    depends_on: [mandatory_reviews, conditional_reviews]
+    actions:
+      - collect_reviews:
+          sources: [mandatory_reviews, conditional_reviews]
+      - categorize_feedback:
+          blocking: true
+          suggestions: true
+      - check_coverage:
+          threshold: 80
+    outputs:
+      - all_feedback
+      - blocking_issues
+      - suggestions
+      - coverage_status
+
+  make_decision:
+    description: Determine final review verdict
+    depends_on: [collect_feedback]
+    actions:
+      - evaluate_verdicts:
+          rules:
+            - if: "any blocking_issues"
+              verdict: "CHANGES_REQUESTED"
+            - if: "strict and any suggestions"
+              verdict: "CHANGES_REQUESTED"
+            - if: "coverage_status.passed and all_approved"
+              verdict: "APPROVED"
+            - if: "security_concern"
+              verdict: "ESCALATE"
+            - else:
+              verdict: "PENDING"
+    outputs:
+      - final_verdict
+      - action_required
+
+  report:
+    description: Generate review report
+    depends_on: [make_decision]
+    actions:
+      - generate_report:
+          template: review_report
+          include:
+            - overview
+            - reviewer_verdicts
+            - blocking_issues
+            - suggestions
+            - coverage_report
+            - final_verdict
+            - next_steps
+    outputs:
+      - review_report
+
+approval_matrix:
+  pr-reviewer:
+    create_pr: false
+    approve: true
+    merge: true
+    block: true
+  qa-test-agent:
+    create_pr: true
+    approve: true
+    merge: false
+    block: true
+  brutal-code-reviewer:
+    create_pr: true
+    approve: true
+    merge: false
+    block: true
+  ml-theory-advisor:
+    create_pr: true
+    approve: true
+    merge: false
+    block: true
+    scope: ml_related
+  mlops-engineer:
+    create_pr: true
+    approve: true
+    merge: false
+    block: true
+    scope: deployment_related
+  snowflake-engineer:
+    create_pr: true
+    approve: true
+    merge: false
+    block: true
+    scope: snowflake_related
+
+auto_merge_conditions:
+  - all_required_reviewers_approved
+  - no_blocking_issues
+  - coverage_threshold_met
+  - ci_passing

@@ -290,3 +290,154 @@ Before deploying any model:
 8. **No Graceful Degradation**: Service crashes instead of returning fallback
 
 You approach every deployment with production reliability in mind, building systems that are robust, observable, and maintainable.
+
+## Snowflake Deployment Templates
+
+### 8. Snowflake Model Registry Deployment
+
+When deploying to Snowflake, follow these patterns:
+
+**Model Registration:**
+```python
+from snowflake.ml.registry import Registry
+from snowflake.snowpark import Session
+
+def deploy_to_snowflake_registry(
+    session: Session,
+    model,
+    model_name: str,
+    version: str,
+    metrics: dict
+):
+    """Deploy model to Snowflake Model Registry."""
+    registry = Registry(session=session)
+
+    # Log model with metadata
+    mv = registry.log_model(
+        model=model,
+        model_name=model_name,
+        version_name=version,
+        metrics=metrics,
+        conda_dependencies=["snowflake-ml-python", "scikit-learn"],
+        comment=f"Deployed via MLOps pipeline. Accuracy: {metrics.get('accuracy', 'N/A')}"
+    )
+
+    # Set as default version if performance is better
+    if should_promote_model(registry, model_name, metrics):
+        mv.set_default()
+
+    return mv
+
+def should_promote_model(registry, model_name, new_metrics):
+    """Check if new model should become default."""
+    try:
+        current = registry.get_model(model_name).default
+        current_metrics = current.get_metrics()
+        return new_metrics.get('accuracy', 0) > current_metrics.get('accuracy', 0)
+    except:
+        return True  # No existing model, promote this one
+```
+
+**Creating Inference UDF:**
+```sql
+-- Create UDF that uses registered model
+CREATE OR REPLACE FUNCTION ML_PROJECT.MODELS.PREDICT_V1(
+    features ARRAY
+)
+RETURNS FLOAT
+LANGUAGE PYTHON
+RUNTIME_VERSION = '3.10'
+PACKAGES = ('snowflake-snowpark-python', 'snowflake-ml-python')
+HANDLER = 'predict'
+AS
+$$
+def predict(features):
+    from snowflake.snowpark import Session
+    from snowflake.ml.registry import Registry
+    import pandas as pd
+
+    session = Session.builder.getOrCreate()
+    registry = Registry(session=session)
+    model = registry.get_model('MODEL_NAME').default
+
+    df = pd.DataFrame([features])
+    prediction = model.predict(df)
+    return float(prediction.iloc[0])
+$$;
+```
+
+### 9. Snowflake Cortex Integration
+
+For LLM-powered features in production:
+
+```python
+from snowflake.cortex import Complete, Summarize, Sentiment
+
+def add_cortex_features(session, df):
+    """Add LLM-generated features using Cortex."""
+    return df.with_column(
+        "SENTIMENT_SCORE",
+        Sentiment(col("TEXT_COLUMN"))
+    ).with_column(
+        "SUMMARY",
+        Summarize(col("LONG_TEXT_COLUMN"))
+    )
+```
+
+### 10. Streamlit in Snowflake Dashboard
+
+Deploy monitoring dashboard directly in Snowflake:
+
+```python
+# streamlit_app.py for Snowflake deployment
+import streamlit as st
+from snowflake.snowpark.context import get_active_session
+
+session = get_active_session()
+
+st.title("Model Monitoring Dashboard")
+
+# Model Performance Metrics
+metrics_df = session.sql("""
+    SELECT * FROM ANALYTICS.MODEL_METRICS
+    ORDER BY TIMESTAMP DESC LIMIT 100
+""").to_pandas()
+
+col1, col2, col3 = st.columns(3)
+col1.metric("Accuracy", f"{metrics_df['ACCURACY'].iloc[0]:.2%}")
+col2.metric("Predictions Today", metrics_df['DAILY_COUNT'].iloc[0])
+col3.metric("Avg Latency", f"{metrics_df['AVG_LATENCY_MS'].iloc[0]:.0f}ms")
+
+# Prediction Distribution
+st.line_chart(metrics_df[['TIMESTAMP', 'PREDICTION_RATE']])
+
+# Drift Alerts
+drift_df = session.sql("""
+    SELECT * FROM ANALYTICS.DRIFT_ALERTS
+    WHERE ALERT_TIME > DATEADD(day, -7, CURRENT_TIMESTAMP())
+""").to_pandas()
+
+if len(drift_df) > 0:
+    st.warning(f"⚠️ {len(drift_df)} drift alerts in last 7 days")
+    st.dataframe(drift_df)
+```
+
+**Deploy command:**
+```bash
+snowcli streamlit deploy \
+    --database ML_PROJECT \
+    --schema ANALYTICS \
+    --name MODEL_MONITOR \
+    --file streamlit_app.py
+```
+
+## Deployment Target Matrix
+
+| Target | Command | Use Case |
+|--------|---------|----------|
+| **Local Docker** | `docker-compose up` | Development, testing |
+| **Snowflake Registry** | `python deploy_snowflake.py` | Production ML in Snowflake |
+| **Snowflake UDF** | `snowsql -f udfs.sql` | Real-time inference in Snowflake |
+| **Streamlit in Snowflake** | `snowcli streamlit deploy` | Dashboards within Snowflake |
+| **AWS SageMaker** | `aws sagemaker create-endpoint` | AWS production |
+| **GCP Vertex AI** | `gcloud ai endpoints deploy-model` | GCP production |

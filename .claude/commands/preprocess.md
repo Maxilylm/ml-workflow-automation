@@ -1,12 +1,13 @@
 ---
 name: preprocess
-description: "Data preprocessing pipeline creation with proper handling of missing values, encoding, scaling, and feature engineering. Ensures no data leakage."
+description: "Data processing pipeline creation for any tabular data. Handles missing values, encoding, scaling, and transformations. For ML tasks, ensures no data leakage."
 user_invocable: true
+aliases: ["process", "clean", "transform"]
 ---
 
-# Data Preprocessing Skill
+# Data Processing Skill
 
-You are creating a robust preprocessing pipeline that prevents data leakage.
+You are creating a robust data processing pipeline. For ML tasks, this prevents data leakage. For analysis tasks, this ensures clean, consistent data.
 
 ## Preprocessing Workflow
 

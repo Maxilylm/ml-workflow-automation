@@ -1,12 +1,13 @@
 ---
 name: report
-description: "Generate ad-hoc reports and dashboards for data analysis, model performance, and project status."
+description: "Generate ad-hoc reports and dashboards for any data project. Supports EDA reports, performance reports, drift monitoring, and project status summaries."
 user_invocable: true
+aliases: ["generate-report", "summary", "status"]
 ---
 
 # Report Skill - Generate Reports and Dashboards
 
-You are generating reports for various aspects of the data science project.
+You are generating reports for various aspects of any data project.
 
 ## Overview
 

@@ -1,21 +1,22 @@
 ---
 name: deploy
-description: "Deploy the ML model to various targets including local Docker, Snowflake Model Registry, Streamlit in Snowflake, or cloud platforms."
+description: "Deploy applications, dashboards, and models to various targets including local Docker, Snowflake, Streamlit Cloud, or cloud platforms. Works with any data application."
 user_invocable: true
+aliases: ["ship", "publish", "release"]
 ---
 
-# Deploy Skill - ML Model Deployment
+# Deploy Skill - Application Deployment
 
-You are deploying the ML model to a specified target environment.
+You are deploying the data application (API + dashboard) to a specified target environment.
 
 ## Overview
 
-The `/deploy` command deploys trained models and applications to:
-- **local** - Docker containers on local machine
-- **snowflake** - Snowflake Model Registry + UDFs
-- **streamlit-sis** - Streamlit in Snowflake dashboard
-- **aws** - AWS deployment (SageMaker, Lambda)
-- **gcp** - Google Cloud deployment (Vertex AI)
+The `/deploy` command deploys applications to:
+- **local** - Docker containers on local machine (API + Streamlit dashboard)
+- **snowflake** - Snowflake Model Registry + Streamlit in Snowflake
+- **streamlit-cloud** - Streamlit Community Cloud
+- **aws** - AWS deployment (ECS, Lambda, SageMaker)
+- **gcp** - Google Cloud deployment (Cloud Run, Vertex AI)
 
 ## Usage
 

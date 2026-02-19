@@ -1,42 +1,48 @@
 ---
 name: team-analyze
-description: "Run a quick analysis workflow without the full ML pipeline. Performs EDA, leakage review, and provides feature recommendations."
+description: "Run a quick analysis workflow on any dataset. Performs EDA, quality review, and provides recommendations. Works with any tabular data - CSV, Excel, database exports, etc."
 user_invocable: true
-aliases: ["team analyze", "analyze"]
+aliases: ["team analyze", "analyze", "quick-analysis"]
 ---
 
 # Team Analyze - Quick Analysis Workflow
 
-You are running a quick analysis workflow that provides comprehensive data understanding without building a full ML pipeline. This is useful for:
-- Initial data exploration
-- Feasibility assessments
+You are running a quick analysis workflow that provides comprehensive data understanding. This is useful for:
+- Initial data exploration on any dataset
+- Data quality assessments
 - Quick insights for stakeholders
-- Pre-project planning
+- Feasibility assessments before larger projects
+- Understanding unfamiliar data
 
 ## Overview
 
 The `/team analyze` command runs analysis stages only:
 1. **EDA** - Comprehensive exploratory data analysis
-2. **Leakage Review** - Identify potential data leakage risks
-3. **Feature Recommendations** - Suggest feature engineering strategies
+2. **Quality Review** - Data quality assessment and validation
+3. **Recommendations** - Column/feature suggestions based on data type
 4. **Summary Report** - Consolidated findings and recommendations
 
 ## Usage
 
 ```bash
-# Analyze a dataset
-/team analyze data/raw/titanic.csv
+# Analyze any dataset
+/team analyze data/sales.csv
+/team analyze exports/customers.xlsx
+/team analyze db_export.csv
 
-# With specific target variable
-/team analyze data/raw/titanic.csv --target Survived
+# With specific target variable (enables ML-focused recommendations)
+/team analyze data/customers.csv --target Churn
 
 # Focus on specific analysis
-/team analyze data/raw/titanic.csv --focus eda
-/team analyze data/raw/titanic.csv --focus leakage
-/team analyze data/raw/titanic.csv --focus features
+/team analyze data/data.csv --focus eda
+/team analyze data/data.csv --focus quality
+/team analyze data/data.csv --focus recommendations
 
 # Generate visualizations
-/team analyze data/raw/titanic.csv --visualize
+/team analyze data/data.csv --visualize
+
+# Output format
+/team analyze data/data.csv --format html
 ```
 
 ## Your Analysis Workflow

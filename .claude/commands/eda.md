@@ -1,12 +1,13 @@
 ---
 name: eda
-description: "Perform exploratory data analysis on a dataset. Generates comprehensive statistics, visualizations, and insights about data quality, distributions, correlations, and potential issues."
+description: "Perform exploratory data analysis on any dataset. Generates comprehensive statistics, visualizations, and insights about data quality, distributions, correlations, and patterns. Works with CSV, Excel, JSON, or any tabular data."
 user_invocable: true
+aliases: ["explore", "analyze-data", "data-analysis"]
 ---
 
 # Exploratory Data Analysis (EDA) Skill
 
-You are performing comprehensive exploratory data analysis on the provided dataset.
+You are performing comprehensive exploratory data analysis on any provided dataset. This works with any tabular data format.
 
 ## Your EDA Workflow
 

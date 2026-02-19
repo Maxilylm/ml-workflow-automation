@@ -10,8 +10,99 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git checkout:*)",
+      "Bash(git push:*)",
+      "Bash(git branch:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(gh:*)",
+      "Bash(python3:*)",
+      "Bash(pip:*)",
+      "Bash(pytest:*)",
+      "Bash(streamlit:*)",
+      "Bash(uvicorn:*)",
+      "Bash(docker:*)",
+      "Bash(docker-compose:*)",
+      "Bash(black:*)",
+      "Bash(chmod:*)",
+      "Bash(mkdir:*)",
+      "Bash(ls:*)",
+      "Bash(cat:*)",
+      "Bash(rm:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(python3:*)"
+      "mcp__ide__executeCode"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash(git commit:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .claude/hooks/pre-commit.sh ]; then .claude/hooks/pre-commit.sh; fi",
+            "timeout": 30000,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(docker-compose up:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .claude/hooks/pre-deploy.sh ]; then .claude/hooks/pre-deploy.sh local; fi",
+            "timeout": 60000,
+            "onError": "stop"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write(*.py)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Hook] Python file written' && if command -v black &>/dev/null; then black --quiet \"$CLAUDE_TOOL_ARG_FILE_PATH\" 2>/dev/null || true; fi",
+            "timeout": 10000,
+            "onError": "ignore"
+          }
+        ]
+      },
+      {
+        "matcher": "Write(dashboard/*.py)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .claude/hooks/post-dashboard.sh ]; then .claude/hooks/post-dashboard.sh \"$CLAUDE_TOOL_ARG_FILE_PATH\"; fi",
+            "timeout": 15000,
+            "onError": "warn"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "mkdir -p .claude && echo \"$(date '+%Y-%m-%d %H:%M:%S') - Agent completed: $CLAUDE_TOOL_ARG_SUBAGENT_TYPE\" >> .claude/agent_activity.log",
+            "timeout": 5000,
+            "onError": "ignore"
+          }
+        ]
+      },
+      {
+        "matcher": "Bash(pytest:*)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "echo '[Hook] Tests completed' && mkdir -p .claude && echo \"$(date '+%Y-%m-%d %H:%M:%S') - Tests run\" >> .claude/workflow.log",
+            "timeout": 5000,
+            "onError": "ignore"
+          }
+        ]
+      }
     ]
   }
 }

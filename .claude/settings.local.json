@@ -103,6 +103,19 @@
           }
         ]
       }
+    ],
+    "SubagentStop": [
+      {
+        "matcher": "eda-analyst",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "if [ -f .claude/hooks/post-eda.sh ]; then bash .claude/hooks/post-eda.sh; fi",
+            "timeout": 15000,
+            "onError": "warn"
+          }
+        ]
+      }
     ]
   }
 }

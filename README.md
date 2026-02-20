@@ -2,6 +2,12 @@
 
 A comprehensive machine learning workflow powered by Claude Code's agents, commands (skills), and hooks system. This setup provides an end-to-end ML pipeline from raw data to deployed models.
 
+> **Plugin available**: This workflow is also published as the [`ml-automation`](https://github.com/BLEND360/ml-automation) Claude Code plugin. Install it directly:
+> ```bash
+> claude plugin marketplace add BLEND360/claude-plugins
+> claude plugin install ml-automation@blend360
+> ```
+
 ## Quick Start
 
 ```bash
@@ -23,7 +29,10 @@ cp your_data.csv data/raw/
 ├── .claude/
 │   ├── agents/           # Specialized AI agents
 │   ├── commands/         # User-invocable skills (slash commands)
+│   ├── hooks/            # Shell scripts for quality gates
 │   └── settings.local.json
+├── src/
+│   └── ml_utils.py       # Reusable ML utilities (shared across agents)
 ├── data/
 │   └── raw/              # Place your raw datasets here
 └── README.md
@@ -37,7 +46,7 @@ Agents are specialized AI personas that handle specific aspects of the ML workfl
 |-------|---------|-------------------|
 | **ml-theory-advisor** | Prevents data leakage, overfitting, validates methodology | Creating features, training models, evaluating results |
 | **eda-analyst** | Comprehensive exploratory data analysis | Analyzing new datasets |
-| **feature-engineering-analyst** | Feature design, interaction analysis, opportunity discovery | Developing new features |
+| **feature-engineering-analyst** | ML feature engineering, leakage detection, feature selection | After EDA, before training |
 | **brutal-code-reviewer** | Code quality, maintainability, AI-friendliness | After significant code changes |
 | **mlops-engineer** | Production deployment, containerization, CI/CD | Deploying models |
 | **frontend-ux-analyst** | UI/UX design analysis | Creating dashboards |
@@ -212,17 +221,23 @@ User Request
 │  team-coldstart │ (orchestrator)
 └────────┬────────┘
          │
-    ┌────┴────┬──────────────┐
-    ▼         ▼              ▼
-┌───────┐ ┌──────────┐ ┌─────────────┐
-│  eda  │ │ml-theory │ │feature-eng. │
-│analyst│ │ advisor  │ │  analyst    │
-└───┬───┘ └────┬─────┘ └──────┬──────┘
-    │          │              │
-    └──────────┴──────────────┘
-               │
-               ▼
-        (preprocessing)
+         ▼
+    ┌───────────┐
+    │    eda    │ → saves .claude/eda_report.json
+    │  analyst  │
+    └─────┬─────┘
+          │ (EDA report feeds downstream agents)
+     ┌────┴──────────────┐
+     ▼                   ▼
+┌──────────┐  ┌─────────────────┐
+│ml-theory │  │feature-eng.     │ ← reads EDA report
+│ advisor  │  │analyst (ML)     │
+└────┬─────┘  └──────┬──────────┘
+     │               │
+     └───────┬───────┘
+             │
+             ▼
+      (preprocessing)
                │
                ▼
         ┌──────────────┐
@@ -274,6 +289,20 @@ user_invocable: true
 
 Instructions for what Claude should do when this command is invoked...
 ```
+
+## Reusable ML Utilities
+
+`src/ml_utils.py` provides common functions that agents and skills use instead of regenerating boilerplate:
+
+| Function | Purpose |
+|----------|---------|
+| `load_data(path)` | Load CSV, Excel, JSON, Parquet |
+| `detect_column_types(df, target_col)` | Classify columns (numerical, categorical, datetime, text, ID) |
+| `build_preprocessor(num_cols, cat_cols)` | Build sklearn ColumnTransformer |
+| `safe_split(df, target_col)` | Leakage-safe train/test split with auto-stratification |
+| `evaluate_model(model, X_test, y_test)` | Auto-detect problem type and compute metrics |
+| `generate_eda_summary(df, target_col)` | Create structured EDA summary |
+| `save_eda_report(data)` / `load_eda_report()` | Persist/load EDA results for agent handoff |
 
 ## Best Practices
 

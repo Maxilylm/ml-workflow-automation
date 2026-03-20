@@ -586,7 +586,7 @@
     <div class="progress-container">
         <div class="progress-bar" id="progressBar"></div>
     </div>
-    <span class="progress-text" id="progressText">1 / 9</span>
+    <span class="progress-text" id="progressText">1 / 11</span>
 
     <!-- Navigation Hints -->
     <div class="nav-hints">
@@ -991,8 +991,140 @@ Deploy to <span class="hl-key">$ARGUMENTS</span> environment.
             </div>
         </section>
 
-        <!-- ==================== SLIDE 9: Get Started ==================== -->
-        <section class="slide title-slide" data-slide="9">
+        <!-- ==================== SLIDE 9: Skill & Agent Evaluation ==================== -->
+        <section class="slide" data-slide="9">
+            <div class="slide-content">
+                <h1 class="slide-title">Skill & Agent <span class="highlight">Evaluation</span></h1>
+                <p class="slide-subtitle">Measure, test, and improve your skills and agents systematically</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Why Evaluate?</h2>
+                        <p>Without evaluation, you're flying blind. Skills may <strong>silently regress</strong> when prompts change, models update, or new edge cases appear.</p>
+
+                        <h3 style="margin-top: 1.5rem;">What to Evaluate</h3>
+                        <ul>
+                            <li><strong>Routing Accuracy</strong> &mdash; Does the right skill/agent get triggered?</li>
+                            <li><strong>Output Quality</strong> &mdash; Are results correct, complete, and well-formed?</li>
+                            <li><strong>Tool Usage</strong> &mdash; Are the right tools called in the right order?</li>
+                            <li><strong>Error Handling</strong> &mdash; Does it recover gracefully from failures?</li>
+                            <li><strong>Guardrails</strong> &mdash; Are dangerous or off-topic requests blocked?</li>
+                        </ul>
+
+                        <div class="callout tip" style="margin-top: 1.5rem;">
+                            <div class="callout-title">&#128161; Golden Rule</div>
+                            <p style="margin-bottom: 0;">Write evals <strong>before</strong> writing the skill. Define what "good" looks like first, then build toward it.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h2>Evaluation Structure</h2>
+                        <div class="code-block" data-lang="json">
+{
+  "<span class="hl-key">skill</span>": "<span class="hl-string">train</span>",
+  "<span class="hl-key">tests</span>": [
+    {
+      "<span class="hl-key">input</span>": "<span class="hl-string">Train a classifier on iris.csv</span>",
+      "<span class="hl-key">assertions</span>": [
+        "<span class="hl-string">calls preprocess before training</span>",
+        "<span class="hl-string">splits data before any fitting</span>",
+        "<span class="hl-string">reports accuracy on held-out set</span>",
+        "<span class="hl-string">does NOT leak test into train</span>"
+      ]
+    },
+    {
+      "<span class="hl-key">input</span>": "<span class="hl-string">Train on empty.csv</span>",
+      "<span class="hl-key">assertions</span>": [
+        "<span class="hl-string">returns clear error message</span>",
+        "<span class="hl-string">does NOT produce a model file</span>"
+      ]
+    }
+  ]
+}
+                        </div>
+
+                        <h3 style="margin-top: 1rem;">Key Metrics</h3>
+                        <div class="cards-grid" style="grid-template-columns: 1fr 1fr;">
+                            <div class="card">
+                                <h3>Assertion Pass Rate</h3>
+                                <p>% of assertions that hold across all test cases</p>
+                            </div>
+                            <div class="card">
+                                <h3>Routing Precision</h3>
+                                <p>% of inputs routed to the correct agent/skill</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 10: Best Practices & Skill Builder ==================== -->
+        <section class="slide" data-slide="10">
+            <div class="slide-content">
+                <h1 class="slide-title">Building <span class="highlight">Better</span> Skills & Agents</h1>
+                <p class="slide-subtitle">Best practices and the skill-builder plugin for rapid development</p>
+
+                <div class="two-col">
+                    <div>
+                        <h2>Best Practices</h2>
+
+                        <div class="cards-grid" style="grid-template-columns: 1fr;">
+                            <div class="card">
+                                <div class="card-icon blue">&#127919;</div>
+                                <h3>1. Single Responsibility</h3>
+                                <p>Each skill does <strong>one thing well</strong>. Compose multiple skills rather than building monoliths. Small skills are easier to test and reuse.</p>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon green">&#128203;</div>
+                                <h3>2. Explicit Trigger Rules</h3>
+                                <p>Write clear <code class="inline-code">TRIGGER when</code> and <code class="inline-code">DO NOT TRIGGER when</code> rules. Ambiguous triggers cause routing errors.</p>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon purple">&#128269;</div>
+                                <h3>3. Self-Check Loops</h3>
+                                <p>Have agents <strong>validate their own output</strong> before returning. Catch mistakes early with built-in quality gates.</p>
+                            </div>
+                            <div class="card">
+                                <div class="card-icon orange">&#128295;</div>
+                                <h3>4. Minimal Tool Surface</h3>
+                                <p>Only grant the tools an agent actually needs. Fewer tools = fewer ways to go wrong + faster execution.</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <h2>The Skill-Builder Plugin</h2>
+                        <p>A meta-skill that helps you <strong>create, test, and iterate</strong> on new skills and agents.</p>
+
+                        <div class="code-block" data-lang="terminal">
+<span class="hl-comment"># Scaffold a new skill with tests</span>
+<span class="hl-command">/skill-builder create --name my-skill --type skill</span>
+
+<span class="hl-comment"># Generate eval suite from examples</span>
+<span class="hl-command">/skill-builder eval --skill my-skill --examples 10</span>
+
+<span class="hl-comment"># Run evals and get improvement report</span>
+<span class="hl-command">/skill-builder test --skill my-skill --verbose</span>
+
+<span class="hl-comment"># Iterate: auto-refine prompt based on failures</span>
+<span class="hl-command">/skill-builder refine --skill my-skill</span>
+                        </div>
+
+                        <h3 style="margin-top: 1.5rem;">Development Loop</h3>
+                        <div class="diagram"><span class="highlight-box">Define</span> &rarr; <span class="highlight-box">Scaffold</span> &rarr; <span class="highlight-box">Write Evals</span> &rarr; <span class="highlight-box">Implement</span>
+   &uarr;                                                    &darr;
+   &larr;&larr;&larr;&larr;&larr;&larr;&larr;&larr;&larr; <span class="highlight-box">Refine</span> &larr;&larr;&larr;&larr;&larr;&larr; <span class="highlight-box">Run Evals</span> &larr;&larr;&larr;&larr;&darr;</div>
+
+                        <div class="callout important" style="margin-top: 1.5rem;">
+                            <div class="callout-title">&#127919; Ship With Confidence</div>
+                            <p style="margin-bottom: 0;">Run <code class="inline-code">/skill-builder test --all</code> in CI to catch regressions before merging. Treat eval failures like test failures.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ==================== SLIDE 11: Get Started ==================== -->
+        <section class="slide title-slide" data-slide="11">
             <div class="slide-content">
                 <div class="logo-container">
                     <div class="logo-icon">&#9672;</div>
